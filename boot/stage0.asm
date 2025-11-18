@@ -16,7 +16,7 @@ start:
 .print_loop:
     lodsb               ; al <- [ds:si], si + 1 byte
     cmp al, 0           ; if al == 0
-    je .done            ; 종료 레이블로 점프
+    je .load_stage1     ; Stage1 로드 레이블로 점프
 
     cmp al, 0x0A        ; 줄바꿈 처리인지 확인
     jne .print_char     ; 줄바꿈 처리가 아닌 경우 문자 출력 레이블로 이동
@@ -34,14 +34,33 @@ start:
     int 0x10            ; BIOS Interrupt
     jmp .print_loop     ; 출력 루프 레이블로 이동
 
+.load_stage1:
+    xor ax, ax          ; ax = 0
+    mov es, ax          ; es = 0
+    mov bx, 0x8000      ; Stage1 로드 주소
+    mov ah, 0x42        ; 확장된 디스크 읽기 모드 설정
+    mov dl, [boot_drive]; 드라이브 번호 (첫 번째 하드디스크)
+    mov si, stage1_dap  ; DAP 구조체 주소
+    int 0x13            ; BIOS Interrupt (디스크 I/O 서비스)
+    jc .done_stage0     ; Carry flag 체크 -> 에러 발생 시 done_stage0으로 점프
+    jmp 0x0000:0x8000   ; Stage1이 로드된 0x0000:0x8000으로 점프
 
-.done:
+.done_stage0:
     hlt                 ; 문자열 출력 후 CPU 중지
-    jmp .done           ; 무한 루프
+    jmp .done_stage0    ; 무한 루프
 
 ; 0 : null terminator
 msg db 'Hello, PixelOS Booted from HDD!', 0x0A, 0
+boot_drive db 0x80      ; 첫 번째 하드디스크
+
+stage1_dap:
+    db 0x10             ; DAP 구조체 크기 : 16바이트
+    db 0                ; 예약된 공간
+    dw 1                ; 읽을 섹터 수
+    dw 0x8000           ; BX : 오프셋
+    dw 0                ; ES : 세그먼트
+    dd 1                ; LBA 하위 32비트
+    dd 0                ; LBA 상위 32비트
     
 times 510-($-$$) db 0   ; 부트섹터 크기를 512 byte로 맞춤 설정
 dw 0xAA55               ; BIOS 부트 시그니처 : 마지막 2 byte
-
