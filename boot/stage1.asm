@@ -13,7 +13,7 @@ start_stage1:
     mov es, ax          ; es = 0x0800
     sti			        ; 인터럽트 활성화
 
-    mov si, msg_stage1  ; 문자열 시작 주소 저장
+    mov si, msg_stage1 - $$  ; 문자열 시작 주소 저장
 
 .print_loop:
     lodsb               ; al <- [ds:si], si + 1 byte
