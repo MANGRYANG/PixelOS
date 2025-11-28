@@ -5,6 +5,7 @@ ASM = nasm
 BOOT_DIR = boot
 BUILD_DIR = build
 DISK_DIR = disk
+KERNEL_DIR = kernel
 
 .PHONY: all run clean
 
@@ -14,10 +15,15 @@ $(BUILD_DIR)/boot.bin: $(BOOT_DIR)/boot.asm
 	@echo "==> Assembling bootloader..."
 	$(ASM) $(BOOT_DIR)/boot.asm -f bin -o $(BUILD_DIR)/boot.bin
 
-$(DISK_DIR)/hddisk.img: $(BUILD_DIR)/boot.bin
+$(BUILD_DIR)/kernel.bin: $(KERNEL_DIR)/kernel.asm
+	@echo "==> Assembling kernel..."
+	$(ASM) $(KERNEL_DIR)/kernel.asm -f bin -o $(BUILD_DIR)/kernel.bin
+
+$(DISK_DIR)/hddisk.img: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/kernel.bin
 	@echo "==> Creating HDD image..."
 	dd if=/dev/zero of=$(DISK_DIR)/hddisk.img bs=512 count=20480
 	dd if=$(BUILD_DIR)/boot.bin of=$(DISK_DIR)/hddisk.img bs=512 count=1 conv=notrunc
+	dd if=$(BUILD_DIR)/kernel.bin of=$(DISK_DIR)/hddisk.img bs=512 seek=1 conv=notrunc
 
 run:
 	qemu-system-i386 -hda $(DISK_DIR)/hddisk.img
