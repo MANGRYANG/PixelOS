@@ -28,7 +28,7 @@ load_kernel:
 kernel_dap:
     db 0x10                 ; DAP 구조체 크기 : 16바이트
     db 0                    ; 예약된 공간
-    dw 4                    ; 읽을 섹터 수
+    dw 100                  ; 읽을 섹터 수
     dw 0x8000               ; BX : 오프셋
     dw 0                    ; ES : 세그먼트
     dd 1                    ; LBA 하위 32비트
@@ -65,7 +65,7 @@ PROTECTEDMODE:
     ; 커널 재배치
     mov esi, 0x00008000     ; source (0x8000)
     mov edi, 0x00100000     ; destination (0x100000)
-    mov ecx, 512            ; dword 단위 카운트 (2048 bytes / 4 bytes = 512)
+    mov ecx, 12800          ; dword 단위 카운트 (100 * 512 bytes / 4 bytes = 12800)
     cld
     rep movsd               ; 4바이트씩 복사
 
