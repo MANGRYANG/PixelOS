@@ -1,5 +1,4 @@
-#ifndef FONT_H
-#define FONT_H
+#pragma once
 
 #include <stdint.h>
 
@@ -19,5 +18,3 @@ void put_char(int px, int py, char ascii, uint8_t color);
 
 // 문자열 출력 함수
 void put_string(int px, int py, const char* str, uint8_t color);
-
-#endif
