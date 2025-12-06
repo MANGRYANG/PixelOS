@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "../font/font.h"
+#include "../kernel/interrupts.h"
 
 #define WIDTH 320
 #define HEIGHT 200
@@ -16,5 +17,10 @@ void kernel_main(void)
         vga[i] = WHITE;  // 흰색 픽셀
     }
 
-    put_string(8, 0, "Hello, PixelOS!", 0x00);
+    // 인터럽트 설정
+    interrupts_init();
+    timer_init();
+    keyboard_init();
+    asm volatile ("sti");
+
 }
