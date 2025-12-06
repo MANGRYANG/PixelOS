@@ -10,6 +10,8 @@ DISK_DIR = disk
 KERNEL_DIR = kernel
 LINKER_DIR = linker
 
+FONT_DIR = font
+
 .PHONY: all run clean
 
 # make all 명령
@@ -29,12 +31,32 @@ $(BUILD_DIR)/kernel.o: $(KERNEL_DIR)/kernel.c
 	-c $(KERNEL_DIR)/kernel.c \
 	-o $(BUILD_DIR)/kernel.o
 
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o
+$(BUILD_DIR)/font.o: $(FONT_DIR)/font.c
+	@echo "==> Compiling font..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(FONT_DIR)/font.c \
+	-o $(BUILD_DIR)/font.o
+
+$(BUILD_DIR)/idt.o: $(KERNEL_DIR)/idt.asm
+	@echo "==> Assembling IDT..."
+	$(ASM) $(KERNEL_DIR)/idt.asm -f elf32 -o $(BUILD_DIR)/idt.o
+
+$(BUILD_DIR)/interrupts.o: $(KERNEL_DIR)/interrupts.c
+	@echo "==> Compiling interrupts..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(KERNEL_DIR)/interrupts.c \
+	-o $(BUILD_DIR)/interrupts.o
+
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/font.o $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o 
 	@echo "==> Linking kernel..."
 	$(LD) -m elf_i386 -T $(LINKER_DIR)/linker.ld \
 	$(BUILD_DIR)/kernel_entry.o \
 	$(BUILD_DIR)/kernel.o \
-	-o $(BUILD_DIR)/kernel.bin
+	$(BUILD_DIR)/font.o \
+	$(BUILD_DIR)/idt.o \
+	$(BUILD_DIR)/interrupts.o \
+	-o $(BUILD_DIR)/kernel.elf
+	objcopy -O binary $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel.bin
 
 $(DISK_DIR)/hddisk.img: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/kernel.bin
 	@echo "==> Creating HDD image..."
@@ -49,5 +71,6 @@ run:
 # make clean 명령
 clean:
 	rm -f $(BUILD_DIR)/*.bin
+	rm -f $(BUILD_DIR)/*.elf
 	rm -f $(BUILD_DIR)/*.o
 	rm -f $(DISK_DIR)/hddisk.img
