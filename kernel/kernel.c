@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "../font/font.h"
 #include "../kernel/interrupts.h"
+#include "../keyboard/keyboard.h"
 
 #define WIDTH 320
 #define HEIGHT 200
@@ -31,29 +32,30 @@ void kernel_main(void)
     int y = 0;
 
     while (1) {
-        char c = keyboard_get_char();
-        if (c)
-        {
-            if (c == '\n')
+        if(keyboard_has_char()) {
+            char c = keyboard_get_char();
+            if (c)
             {
-                x = 0;
-                y += 16;
-            }
-            
-            else if (c == '\b')
-            {
-                if (x > 8)
+                if (c == '\n')
                 {
-                    x -= 8;
+                    x = 0;
+                    y += 16;
                 }
-            }
-            
-            else
-            {
-                put_char(x, y, c, BLACK);
-                x += 8;
+                
+                else if (c == '\b')
+                {
+                    if (x > 8)
+                    {
+                        x -= 8;
+                    }
+                }
+                
+                else
+                {
+                    put_char(x, y, c, BLACK);
+                    x += 8;
+                }
             }
         }
     }
-
 }
