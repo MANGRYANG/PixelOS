@@ -5,6 +5,7 @@
 #define WIDTH 320
 #define HEIGHT 200
 #define VGA_ADDR 0xA0000
+#define BLACK 0x00
 #define WHITE 0X0F
 
 void kernel_main(void)
@@ -21,6 +22,38 @@ void kernel_main(void)
     interrupts_init();
     timer_init();
     keyboard_init();
+
+    keyboard_reset_state();
+
     asm volatile ("sti");
+
+    int x = 0;
+    int y = 0;
+
+    while (1) {
+        char c = keyboard_get_char();
+        if (c)
+        {
+            if (c == '\n')
+            {
+                x = 0;
+                y += 16;
+            }
+            
+            else if (c == '\b')
+            {
+                if (x > 8)
+                {
+                    x -= 8;
+                }
+            }
+            
+            else
+            {
+                put_char(x, y, c, BLACK);
+                x += 8;
+            }
+        }
+    }
 
 }

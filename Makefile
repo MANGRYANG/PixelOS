@@ -11,6 +11,7 @@ KERNEL_DIR = kernel
 LINKER_DIR = linker
 
 FONT_DIR = font
+KEYBOARD_DIR = keyboard
 
 .PHONY: all run clean
 
@@ -47,16 +48,27 @@ $(BUILD_DIR)/interrupts.o: $(KERNEL_DIR)/interrupts.c
 	-c $(KERNEL_DIR)/interrupts.c \
 	-o $(BUILD_DIR)/interrupts.o
 
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/font.o $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o 
+$(BUILD_DIR)/keyboard.o: $(KEYBOARD_DIR)/keyboard.c
+	@echo "==> Compiling keyboard input dirver..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(KEYBOARD_DIR)/keyboard.c \
+	-o $(BUILD_DIR)/keyboard.o
+
+# 커널 링크
+$(BUILD_DIR)/kernel.bin: \
+    $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
+    $(BUILD_DIR)/font.o \
+    $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
+    $(BUILD_DIR)/keyboard.o
 	@echo "==> Linking kernel..."
 	$(LD) -m elf_i386 -T $(LINKER_DIR)/linker.ld \
-	$(BUILD_DIR)/kernel_entry.o \
-	$(BUILD_DIR)/kernel.o \
+	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
 	$(BUILD_DIR)/font.o \
-	$(BUILD_DIR)/idt.o \
-	$(BUILD_DIR)/interrupts.o \
+	$(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
+	$(BUILD_DIR)/keyboard.o \
 	-o $(BUILD_DIR)/kernel.elf
 	objcopy -O binary $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel.bin
+
 
 $(DISK_DIR)/hddisk.img: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/kernel.bin
 	@echo "==> Creating HDD image..."

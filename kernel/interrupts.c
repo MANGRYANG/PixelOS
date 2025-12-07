@@ -1,5 +1,6 @@
 #include "io.h"
 #include "interrupts.h"
+#include "../keyboard/keyboard.h"
 
 // IDT 엔트리 구조체
 struct idt_entry
@@ -96,47 +97,13 @@ void timer_handler(void)
     ++g_timer_ticks;
 }
 
-// 키보드 스캔코드를 저장할 변수 선언
-volatile uint8_t g_latest_scancode = 0;
-
-// 테스트 출력을 위한 16진수 변환 함수
-static char hex_digit(uint8_t v)
-{
-    return "0123456789ABCDEF"[v & 0x0F];
-}
-
 // asm 코드에서 호출되는 키보드 핸들러 정의
 void keyboard_handler(void)
 {
-    uint8_t scancode = inb(0x60);  // PS/2 스캔코드를 읽기
-    g_latest_scancode = scancode;
-
-    // 테스트용 스캔코드 출력 로직
-
-    // 릴리즈 이벤트 무시
-    if (scancode & 0x80)
-    {
-        return;
-    }
-
-    static int cursor_x = 0;    // X좌표
-    static int cursor_y = 0;    // Y좌표
-
-    char buf[3];
-    buf[0] = hex_digit(scancode >> 4);  // 스캔코드 상위 4비트
-    buf[1] = hex_digit(scancode);       // 스캔코드 하위 4비트
-    buf[2] = 0;
-
-    put_string(cursor_x, cursor_y, buf, 0x00);
-    
-    cursor_x += 16;  // 두 글자만큼 이동
-
-    // 줄이 길어지면 다음 줄로 이동
-    if (cursor_x >= 300)
-    {
-        cursor_x = 0;
-        cursor_y += 16;
-    }
+    // PS/2 스캔코드를 읽기
+    uint8_t scancode = inb(0x60);
+    // 키보드 드라이브에 스캔 코드 전달   
+    keyboard_on_scancode(scancode);
 }
 
 // 인터럽트 초기화 함수
