@@ -13,6 +13,9 @@ LINKER_DIR = linker
 FONT_DIR = font
 KEYBOARD_DIR = keyboard
 
+GRAPHICS_DIR = graphics
+WINDOW_DIR = window
+
 .PHONY: all run clean
 
 # make all 명령
@@ -54,18 +57,32 @@ $(BUILD_DIR)/keyboard.o: $(KEYBOARD_DIR)/keyboard.c
 	-c $(KEYBOARD_DIR)/keyboard.c \
 	-o $(BUILD_DIR)/keyboard.o
 
+$(BUILD_DIR)/graphics.o: $(GRAPHICS_DIR)/graphics.c
+	@echo "==> Compiling graphics module..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(GRAPHICS_DIR)/graphics.c \
+	-o $(BUILD_DIR)/graphics.o
+
+$(BUILD_DIR)/window.o: $(WINDOW_DIR)/window.c
+	@echo "==> Compiling window manager..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(WINDOW_DIR)/window.c \
+	-o $(BUILD_DIR)/window.o
+
 # 커널 링크
 $(BUILD_DIR)/kernel.bin: \
     $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
     $(BUILD_DIR)/font.o \
     $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
-    $(BUILD_DIR)/keyboard.o
+    $(BUILD_DIR)/keyboard.o \
+	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o
 	@echo "==> Linking kernel..."
 	$(LD) -m elf_i386 -T $(LINKER_DIR)/linker.ld \
 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
 	$(BUILD_DIR)/font.o \
 	$(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
 	$(BUILD_DIR)/keyboard.o \
+	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o \
 	-o $(BUILD_DIR)/kernel.elf
 	objcopy -O binary $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel.bin
 

@@ -2,11 +2,6 @@
 
 #include <stdint.h>
 
-#define WIDTH 320
-#define HEIGHT 200
-#define VGA_ADDR 0xA0000
-#define WHITE 0X0F
-
 #define FONT_WIDTH  8
 #define FONT_HEIGHT 16
 
