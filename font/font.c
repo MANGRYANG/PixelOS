@@ -1,4 +1,5 @@
 #include "font.h"
+#include "../graphics/graphics.h"
 
 /*
  * font8x16 — ASCII 0~127 문자에 대한 8x16 Monospaced Bitmap Font Table 
@@ -150,34 +151,21 @@ uint8_t font8x16[128][16] =
     [127] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, //0x7F
 };
 
-uint8_t* const vga = (uint8_t*)VGA_ADDR;
 
 void remove_char(int px, int py, uint8_t background_color)
 {
-    // 출력할 문자의 top-left 비트의 화면 기준 인덱스
-    int top_left_idx = px + (py * 320);
-    // 현재 픽셀의 인덱스 값을 저장할 임시 변수
-    int current_pixel_idx = 0;
-    
     for(int line = 0; line < FONT_HEIGHT; ++line)
     {
         for(int i = 0; i < FONT_WIDTH; ++i)
         {
-            // 현재 픽셀의 화면 기준 인덱스 계산   
-            current_pixel_idx = (top_left_idx + i) + (WIDTH * line);
-            // 인자로 받은 color로 현재 픽셀의 색 변경
-            vga[current_pixel_idx] = background_color;
+            // 해당 픽셀을 배경색으로 채우기
+            gfx_putpixel(px + i, py + line, background_color);
         }
     }
 }
 
 void put_char(int px, int py, char ascii, uint8_t color)
-{
-    // 출력할 문자의 top-left 비트의 화면 기준 인덱스
-    int top_left_idx = px + (py * 320);
-    // 현재 픽셀의 인덱스 값을 저장할 임시 변수
-    int current_pixel_idx = 0;
-    
+{   
     for(int line = 0; line < FONT_HEIGHT; ++line)
     {
         for(int i = 0; i < FONT_WIDTH; ++i)
@@ -185,10 +173,8 @@ void put_char(int px, int py, char ascii, uint8_t color)
             // 폰트 정보에서 (i, line) 픽셀에 해당하는 값이 1인 경우
             if(((font8x16[ascii][line] >> ((FONT_WIDTH - 1) - i)) & 1) == 1)
             {
-                // 현재 픽셀의 화면 기준 인덱스 계산
-                current_pixel_idx = (top_left_idx + i) + (WIDTH * line);
-                // 인자로 받은 color로 현재 픽셀의 색 변경
-                vga[current_pixel_idx] = color;
+                // 해당 위치에 색 그리기
+                gfx_putpixel(px + i, py + line, color);
             }
             
         }
