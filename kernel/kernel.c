@@ -3,19 +3,13 @@
 #include "../kernel/interrupts.h"
 #include "../keyboard/keyboard.h"
 #include "../graphics/graphics.h"
+#include "../graphics/color.h"
 #include "../window/window.h"
-
-#define WIDTH 320
-#define HEIGHT 200
-#define VGA_ADDR 0xA0000
-#define BLACK 0x00
-#define WHITE 0X0F
-#define BLUE 0x01
 
 void kernel_main(void)
 {   
     // 화면 초기화
-    gfx_clear(0x07);
+    gfx_clear(COLOR_LIGHT_GRAY);
 
     // 인터럽트 설정
     interrupts_init();
@@ -33,8 +27,8 @@ void kernel_main(void)
     Window* testwin = wm_create_window(
         8, 8,                   // px, py
         200, 160,               // width, height
-        WHITE,                  // window 배경색은 흰색으로 설정
-        BLUE,                   // window 테두리색은 파란색으로 설정
+        COLOR_WHITE,            // window 배경색은 흰색으로 설정
+        COLOR_BLUE,             // window 테두리색은 파란색으로 설정
         "New window"            // title
     );
 
@@ -45,7 +39,7 @@ void kernel_main(void)
         if (keyboard_has_char()) {
             char c = keyboard_get_char();
             if (c) {
-                window_put_char(testwin, c, BLACK);
+                window_put_char(testwin, c, COLOR_BLACK);
             }
         }
     }

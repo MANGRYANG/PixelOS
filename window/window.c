@@ -1,6 +1,7 @@
 #include "window.h"
 #include "../font/font.h"
 #include "../graphics/graphics.h"
+#include "../graphics/color.h"
 
 // 최대로 허용되는 window 개수
 #define MAX_WINDOWS 4
@@ -86,7 +87,7 @@ static void draw_window(Window* win)
 void wm_draw_all(void)
 {
     // 전체 배경 색 초기화
-    gfx_clear(0x07);
+    gfx_clear(COLOR_LIGHT_GRAY);
 
     // 활성 상태인 window 출력
     for (int i = 0; i < MAX_WINDOWS; ++i)
