@@ -46,14 +46,9 @@ Window* wm_create_window(int px, int py, int width, int height, uint8_t bg_color
             // 생성한 window 반환
             return win;
         }
-
-        // 모든 window가 활성 상태인 경우
-        else
-        {
-            // window 생성 실패
-            return 0;
-        }
     }
+    // window 생성 실패
+    return 0;
 }
 
 // window 그리기 함수

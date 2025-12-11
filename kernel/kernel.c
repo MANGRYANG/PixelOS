@@ -32,6 +32,16 @@ void kernel_main(void)
         "New window"            // title
     );
 
+    // 테스트용 window 생성
+    Window* testwin2 = wm_create_window(
+        50, 50,
+        200, 140,
+        COLOR_WHITE,
+        COLOR_BLUE,
+        "New window2"
+    );
+
+
     // 모든 window를 포함한 화면 재출력
     wm_draw_all();
 
