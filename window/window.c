@@ -43,6 +43,9 @@ Window* wm_create_window(int px, int py, int width, int height, uint8_t bg_color
             // 새 window를 활성 상태로 변경
             win->in_use = true;
 
+            // 새로 생성된 window를 가장 상위 레이어로 자동 배치
+            win->z_index = g_top_zindex++;
+
             // 생성한 window 반환
             return win;
         }
@@ -78,11 +81,61 @@ static void draw_window(Window* win)
     }
 }
 
+// z-index의 오버플로우 방지를 위한 z-index 일반화 함수
+static void wm_normalize_zindex()
+{
+    int new_index = 0;
+
+    for (int i = 0; i < MAX_WINDOWS; i++)
+    {
+        if (g_windows[i].in_use)
+        {
+            g_windows[i].z_index = new_index++;
+        }
+    }
+
+    g_top_zindex = new_index;
+}
+
+// z-index 기준으로 window를 정렬하기 위한 내부 함수 정의
+// Insert sort 사용
+static void wm_sort_by_zindex()
+{
+    for (int i = 1; i < MAX_WINDOWS; ++i)
+    {
+        // 현재 삽입될 윈도우를 key로 설정
+        Window key = g_windows[i];
+
+        // 비활성 window는 무시
+        if (!key.in_use)
+        {
+            continue;
+        }
+
+        // Insert Sort 알고리즘을 통해 g_windows를 z-index 기반으로 정렬
+        int j = i - 1;
+
+        while (j >= 0 && g_windows[j].in_use && g_windows[j].z_index > key.z_index)
+        {
+            g_windows[j + 1] = g_windows[j];
+            --j;
+        }
+
+        g_windows[j + 1] = key;
+    }
+
+    // 오버플로우 방지를 위한 z-index 일반화
+    wm_normalize_zindex();
+}
+
 // 모든 window를 포함한 화면 재출력 함수
 void wm_draw_all(void)
 {
     // 전체 배경 색 초기화
     gfx_clear(COLOR_LIGHT_GRAY);
+
+    // 출력 전 window를 z-index 기준으로 정렬
+    wm_sort_by_zindex();
 
     // 활성 상태인 window 출력
     for (int i = 0; i < MAX_WINDOWS; ++i)
@@ -184,4 +237,11 @@ void window_put_string(Window* win, const char* s, uint8_t color)
     {
         window_put_char(win, *s, color);
     }
+}
+
+// 창을 가장 위 레이어로 가져오는 함수
+void wm_bring_to_front(Window* win)
+{
+    win->z_index = g_top_zindex++;
+    wm_sort_by_zindex();
 }
