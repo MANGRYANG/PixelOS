@@ -22,3 +22,6 @@ void gfx_present(void);
 
 // VSYNC 동기화 함수
 void gfx_wait_vsync(void);
+
+// 백 버퍼 포인터 반환 함수
+uint8_t* gfx_get_backbuffer(void);

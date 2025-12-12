@@ -101,3 +101,9 @@ void gfx_wait_vsync(void)
     while (inb(0x3DA) & 0x08) { }
     while (!(inb(0x3DA) & 0x08)) { }
 }
+
+// 백 버퍼 포인터 반환 함수
+uint8_t* gfx_get_backbuffer(void)
+{
+    return backbuffer;
+}

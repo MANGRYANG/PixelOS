@@ -2,6 +2,7 @@
 #include "../font/font.h"
 #include "../graphics/graphics.h"
 #include "../graphics/color.h"
+#include "../mouse/cursor.h"
 
 // 최대로 허용되는 window 개수
 #define MAX_WINDOWS 4
@@ -335,4 +336,6 @@ void wm_composite(void)
             }
         }
     }
+
+    cursor_composite(gfx_get_backbuffer());
 }

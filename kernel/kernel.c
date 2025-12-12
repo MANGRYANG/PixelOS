@@ -53,7 +53,6 @@ void kernel_main(void)
     cursor_init(mx, my);
 
     wm_composite();
-    cursor_render();
     gfx_present();
 
 
@@ -68,7 +67,6 @@ void kernel_main(void)
         }
         
         wm_composite();
-        cursor_render();
         gfx_present();
     }
 }
