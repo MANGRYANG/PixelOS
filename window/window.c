@@ -9,6 +9,10 @@
 // window 정보를 저장할 정적 배열
 static Window g_windows[MAX_WINDOWS];
 
+// z-index 순서대로 그리기 위한 포인터 배열
+static Window* g_order[MAX_WINDOWS];
+static int g_order_count = 0;
+
 // window manager 초기화
 void wm_init(void)
 {
@@ -16,7 +20,9 @@ void wm_init(void)
     for (int i = 0; i < MAX_WINDOWS; ++i)
     {
         g_windows[i].in_use = false;
+        g_order[i] = 0;
     }
+    g_order_count = 0;
 }
 
 // 새 window 생성
@@ -81,69 +87,77 @@ static void draw_window(Window* win)
     }
 }
 
-// z-index의 오버플로우 방지를 위한 z-index 일반화 함수
-static void wm_normalize_zindex()
+// g_order 포인터 배열을 활성 상태인 window로 채우는 함수
+static void wm_build_order_list(void)
 {
-    int new_index = 0;
+    g_order_count = 0;
 
-    for (int i = 0; i < MAX_WINDOWS; i++)
+    for (int i = 0; i < MAX_WINDOWS; ++i)
     {
         if (g_windows[i].in_use)
         {
-            g_windows[i].z_index = new_index++;
+            g_order[g_order_count++] = &g_windows[i];
         }
     }
 
-    g_top_zindex = new_index;
+    // 나머지는 0으로 정리
+    for (int i = g_order_count; i < MAX_WINDOWS; ++i)
+    {
+        g_order[i] = 0;
+    }
+}
+
+// z-index의 오버플로우 방지를 위한 z-index 일반화 함수
+static void wm_normalize_zindex()
+{
+    for (int i = 0; i < g_order_count; ++i)
+    {
+        g_order[i]->z_index = i;
+    }
+
+    g_top_zindex = g_order_count;
 }
 
 // z-index 기준으로 window를 정렬하기 위한 내부 함수 정의
 // Insert sort 사용
 static void wm_sort_by_zindex()
 {
-    for (int i = 1; i < MAX_WINDOWS; ++i)
+    for (int i = 1; i < g_order_count; ++i)
     {
-        // 현재 삽입될 윈도우를 key로 설정
-        Window key = g_windows[i];
-
-        // 비활성 window는 무시
-        if (!key.in_use)
-        {
-            continue;
-        }
-
-        // Insert Sort 알고리즘을 통해 g_windows를 z-index 기반으로 정렬
+        Window* key = g_order[i];
         int j = i - 1;
 
-        while (j >= 0 && g_windows[j].in_use && g_windows[j].z_index > key.z_index)
+        while (j >= 0 && g_order[j]->z_index > key->z_index)
         {
-            g_windows[j + 1] = g_windows[j];
+            g_order[j + 1] = g_order[j];
             --j;
         }
 
-        g_windows[j + 1] = key;
+        g_order[j + 1] = key;
     }
+}
 
-    // 오버플로우 방지를 위한 z-index 일반화
+// 정렬/정규화 파이프라인
+static void wm_refresh_order()
+{
+    wm_build_order_list();
+    wm_sort_by_zindex();
     wm_normalize_zindex();
 }
 
 // 모든 window를 포함한 화면 재출력 함수
-void wm_draw_all(void)
+void wm_draw_all()
 {
     // 전체 배경 색 초기화
     gfx_clear(COLOR_LIGHT_GRAY);
 
-    // 출력 전 window를 z-index 기준으로 정렬
-    wm_sort_by_zindex();
+    // 출력 전 window 순서 갱신(포인터 배열 정렬)
+    wm_refresh_order();
 
-    // 활성 상태인 window 출력
-    for (int i = 0; i < MAX_WINDOWS; ++i)
+    // 활성 상태인 window 출력 (정렬된 포인터 배열 순서대로)
+    for (int i = 0; i < g_order_count; ++i)
     {
-        if (g_windows[i].in_use)
-        {
-            draw_window(&g_windows[i]);
-        }
+        draw_window(g_order[i]);
     }
 }
 
@@ -185,7 +199,6 @@ void window_put_char(Window* win, char c, uint8_t color)
                 }
             }
         }
-        
         // 줄의 맨 앞에서 백스페이스 키 입력 시 윗줄로 이동
         else if (win->cursor_y > 0)
         {
@@ -198,7 +211,7 @@ void window_put_char(Window* win, char c, uint8_t color)
             // 윗줄로 이동
             win->cursor_y -= 1;
         }
-        
+
         return;
     }
 
@@ -211,7 +224,8 @@ void window_put_char(Window* win, char c, uint8_t color)
         return;
     }
 
-    if (win->cursor_x >= max_cols) {
+    if (win->cursor_x >= max_cols)
+    {
         win->cursor_x = 0;
         win->cursor_y++;
 
@@ -227,7 +241,6 @@ void window_put_char(Window* win, char c, uint8_t color)
 
     // 출력 후 커서 이동
     win->cursor_x++;
-
 }
 
 // window 내부 문자열 출력 함수
@@ -242,6 +255,9 @@ void window_put_string(Window* win, const char* s, uint8_t color)
 // 창을 가장 위 레이어로 가져오는 함수
 void wm_bring_to_front(Window* win)
 {
+    if (!win || !win->in_use) return;
+
     win->z_index = g_top_zindex++;
-    wm_sort_by_zindex();
+    // 포인터 배열만 갱신
+    wm_refresh_order();
 }
