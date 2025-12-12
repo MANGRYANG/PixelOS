@@ -316,12 +316,13 @@ void wm_composite(void)
 
     wm_refresh_order();
 
-    for (int i = 0; i < g_order_count; i++)
+    // window 레이어
+    for (int i = 0; i < g_order_count; ++i)
     {
         Window* w = g_order[i];
         if (!w->in_use) continue;
 
-        for (int y = 0; y < w->height; y++)
+        for (int y = 0; y < w->height; ++y)
         {
             int sy = w->py + y;
             if (sy < 0 || sy >= HEIGHT) continue;
@@ -337,5 +338,23 @@ void wm_composite(void)
         }
     }
 
-    cursor_composite(gfx_get_backbuffer());
+    // 커서 레이어
+    Layer* cursor = cursor_get_layer();
+    if (cursor && cursor->visible)
+    {
+        for (int y = 0; y < cursor->h; ++y)
+        {
+            int sy = cursor->y + y;
+            if (sy < 0 || sy >= HEIGHT) continue;
+
+            for (int x = 0; x < cursor->w; ++x)
+            {
+                int sx = cursor->x + x;
+                if (sx < 0 || sx >= WIDTH) continue;
+
+                uint8_t c = cursor->buffer[y * cursor->w + x];
+                gfx_putpixel(sx, sy, c);
+            }
+        }
+    }
 }
