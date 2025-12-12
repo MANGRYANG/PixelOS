@@ -2,5 +2,8 @@
 #include <stdint.h>
 
 void cursor_init(int x, int y);
-void cursor_move(int x, int y);
-void cursor_refresh(void);
+void cursor_set_pos(int x, int y);
+void cursor_draw(void);
+
+int  cursor_get_x(void);
+int  cursor_get_y(void);

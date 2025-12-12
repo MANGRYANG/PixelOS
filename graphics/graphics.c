@@ -7,11 +7,23 @@ static uint8_t backbuffer[WIDTH * HEIGHT];
 // 그리기 대상 버퍼
 static uint8_t* const draw = backbuffer;
 
-void gfx_present(void)
+void gfx_present_with_cursor(int cx, int cy, uint8_t cursor_color)
 {
-    for (int i = 0; i < WIDTH * HEIGHT; ++i)
+    const int cw = 8, ch = 8;
+
+    for (int y = 0; y < HEIGHT; ++y)
     {
-        vga[i] = backbuffer[i];
+        int row = y * WIDTH;
+        for (int x = 0; x < WIDTH; ++x)
+        {
+            uint8_t c = backbuffer[row + x];
+
+            // 커서 영역이면 커서색으로 오버레이
+            if (x >= cx && x < cx + cw && y >= cy && y < cy + ch)
+                c = cursor_color;
+
+            vga[row + x] = c;
+        }
     }
 }
 
@@ -84,5 +96,28 @@ void gfx_draw_rect(int x, int y, int w, int h, uint8_t color)
     {
         gfx_putpixel(x, y + row, color);
         gfx_putpixel(x + (w - 1), y + row, color);
+    }
+}
+
+// -- 백 버퍼가 아닌 VGA에 직접 그리는 함수 --
+void gfx_putpixel_front(int x, int y, uint8_t color)
+{
+    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return;
+    vga[y * WIDTH + x] = color;
+}
+
+void gfx_fill_rect_front(int x, int y, int w, int h, uint8_t color)
+{
+    for (int row = 0; row < h; ++row)
+    {
+        int current_y = y + row;
+        if (current_y < 0 || current_y >= HEIGHT) continue;
+
+        for (int column = 0; column < w; ++column)
+        {
+            int current_x = x + column;
+            if (current_x < 0 || current_x >= WIDTH) continue;
+            vga[current_y * WIDTH + current_x] = color;
+        }
     }
 }

@@ -52,17 +52,18 @@ void kernel_main(void)
     int mx = get_mouse_x();
     int my = get_mouse_y();
     cursor_init(mx, my);
-    gfx_present();
+    gfx_present_with_cursor(mx, my, COLOR_LIGHT_RED);
 
     while (1) {
         int new_mx = get_mouse_x();
         int new_my = get_mouse_y();
 
         if (new_mx != mx || new_my != my) {
-            cursor_move(new_mx, new_my);
+            cursor_set_pos(new_mx, new_my);
             mx = new_mx;
             my = new_my;
-            gfx_present();
         }
+        
+        gfx_present_with_cursor(mx, my, COLOR_LIGHT_RED);
     }
 }
