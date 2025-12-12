@@ -2,6 +2,8 @@
 #include "../font/font.h"
 #include "../kernel/interrupts.h"
 #include "../keyboard/keyboard.h"
+#include "../mouse/mouse.h"
+#include "../mouse/cursor.h"
 #include "../graphics/graphics.h"
 #include "../graphics/color.h"
 #include "../window/window.h"
@@ -13,10 +15,13 @@ void kernel_main(void)
 
     // 인터럽트 설정
     interrupts_init();
-    timer_init();
-    keyboard_init();
+
+    irq_enable_timer();
+    irq_enable_keyboard();
+    irq_enable_mouse();
 
     keyboard_reset_state();
+    mouse_init();
 
     asm volatile ("sti");
 
@@ -41,16 +46,27 @@ void kernel_main(void)
         "New window2"
     );
 
+    wm_composite();
 
-    // 모든 window를 포함한 화면 재출력
-    wm_draw_all();
+    int mx = get_mouse_x();
+    int my = get_mouse_y();
+    cursor_init(mx, my);
+
+    wm_composite();
+    gfx_present();
+
 
     while (1) {
-        if (keyboard_has_char()) {
-            char c = keyboard_get_char();
-            if (c) {
-                window_put_char(testwin, c, COLOR_BLACK);
-            }
+        int new_mx = get_mouse_x();
+        int new_my = get_mouse_y();
+
+        if (new_mx != mx || new_my != my) {
+            cursor_set_pos(new_mx, new_my);
+            mx = new_mx;
+            my = new_my;
         }
+        
+        wm_composite();
+        gfx_present();
     }
 }

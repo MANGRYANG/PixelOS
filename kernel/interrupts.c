@@ -1,6 +1,7 @@
 #include "io.h"
 #include "interrupts.h"
 #include "../keyboard/keyboard.h"
+#include "../mouse/mouse.h"
 
 // IDT 엔트리 구조체
 struct idt_entry
@@ -27,6 +28,7 @@ static struct idt_ptr idtp;
 extern void idt_load(uint32_t idtp_addr);
 extern void timer_isr(void);
 extern void keyboard_isr(void);
+extern void mouse_isr(void);
 
 // IDT 초기화를 위한 간단한 memset 함수(내부 함수)
 static void* memset(void *dest, uint8_t value, uint32_t size)
@@ -106,6 +108,15 @@ void keyboard_handler(void)
     keyboard_on_scancode(scancode);
 }
 
+// asm 코드에서 호출되는 마우스 핸들러 정의
+void mouse_handler(void)
+{
+    // PS/2 데이터를 읽기
+    uint8_t data = inb(0x60);
+    // 마우스 드라이브에 데이터 전달
+    mouse_on_data(data);
+}
+
 // 인터럽트 초기화 함수
 void interrupts_init(void)
 {
@@ -123,7 +134,6 @@ void interrupts_init(void)
     // 타이머 인터럽트 발생 시 timer_isr 호출
     // 셀렉터(GDT 코드 세그먼트) 0x08
     // type_attributes 0x8E (DPL 0, 32비트 인터럽트 게이트)
-    
     idt_set_gate(0x20, (uint32_t)timer_isr, 0x08, 0x8E);
 
     // 키보드 인터럽트 설정(IRQ1) -> IDT 인덱스 0x21에 매핑됨
@@ -132,12 +142,18 @@ void interrupts_init(void)
     // type_attributes 0x8E (DPL 0, 32비트 인터럽트 게이트)
     idt_set_gate(0x21, (uint32_t)keyboard_isr, 0x08, 0x8E);
 
+    // 마우스 인터럽트 설정(IRQ12) -> IDT 인덱스 0x2C에 매핑됨
+    // 마우스 인터럽트 발생 시 mouse_isr 호출
+    // 셀렉터(GDT 코드 세그먼트) 0x08
+    // type_attributes 0x8E (DPL 0, 32비트 인터럽트 게이트)
+    idt_set_gate(0x2C, (uint32_t)mouse_isr, 0x08, 0x8E);
+
     // IDT 로드
     idt_load((uint32_t)&idtp);
 }
 
 // 타이머 활성화 (마스크 해제)
-void timer_init(void)
+void irq_enable_timer(void)
 {
     // 현재 마스킹 정보를 읽어 mask 변수에 저장
     uint8_t mask = inb(PIC1_DATA);
@@ -150,7 +166,7 @@ void timer_init(void)
 }
 
 // 키보드 활성화 (마스크 해제)
-void keyboard_init(void)
+void irq_enable_keyboard(void)
 {
     // 현재 마스킹 정보를 읽어 mask 변수에 저장
     uint8_t mask = inb(PIC1_DATA);
@@ -160,4 +176,18 @@ void keyboard_init(void)
 
     // 마스터 PIC에 마스킹 정보 적용
     outb(PIC1_DATA, mask);
+}
+
+// 마우스 활성화 (마스크 해제)
+void irq_enable_mouse(void)
+{
+    // 슬레이브 PIC 활성화를 위해 IRQ2 라인 마스킹 해제
+    uint8_t mask_master = inb(PIC1_DATA);
+    mask_master &= ~(1 << 2);
+    outb(PIC1_DATA, mask_master);
+
+    // 마우스 IRQ12 마스킹 해제
+    uint8_t mask_slave = inb(PIC2_DATA);
+    mask_slave &= ~(1 << 4);
+    outb(PIC2_DATA, mask_slave);
 }
