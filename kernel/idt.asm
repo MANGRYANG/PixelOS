@@ -3,7 +3,9 @@
 global idt_load
 global timer_isr
 global keyboard_isr
+global mouse_isr
 
+extern mouse_handler
 extern keyboard_handler
 extern timer_handler
 
@@ -40,3 +42,19 @@ keyboard_isr:
     out 0x20, al                ; PIC EOI(End of interrupt) 명령 코드 전송
 
     iretd                       ; 인터럽트에서 복귀
+
+;-----------------------------------------------------------------------------
+; 마우스 IRQ12 인터럽트 서비스 루틴
+;-----------------------------------------------------------------------------
+mouse_isr:
+    pusha
+    call mouse_handler          ; mouse_handler 호출    
+    popa
+
+    ; IRQ12는 슬레이브 PIC에 연결되어 있음
+    ; 따라서 IRQ12는 슬레이브 PIC(0xA0) -> 마스터 PIC(0x20) 순으로 EOI 명령 코드 전송
+    mov al, 0x20
+    out 0xA0, al           ; 슬레이브 PIC EOI
+    out 0x20, al           ; 마스터 PIC EOI
+
+    iretd

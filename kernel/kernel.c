@@ -2,9 +2,16 @@
 #include "../font/font.h"
 #include "../kernel/interrupts.h"
 #include "../keyboard/keyboard.h"
+#include "../mouse/mouse.h"
 #include "../graphics/graphics.h"
 #include "../graphics/color.h"
 #include "../window/window.h"
+
+void draw_mouse_cursor(int x, int y)
+{
+    // 간단한 8x8 검정 네모 커서
+    gfx_fill_rect(x, y, 8, 8, COLOR_BLACK);
+}
 
 void kernel_main(void)
 {   
@@ -13,10 +20,13 @@ void kernel_main(void)
 
     // 인터럽트 설정
     interrupts_init();
-    timer_init();
-    keyboard_init();
+
+    irq_enable_timer();
+    irq_enable_keyboard();
+    irq_enable_mouse();
 
     keyboard_reset_state();
+    mouse_init();
 
     asm volatile ("sti");
 
@@ -41,9 +51,11 @@ void kernel_main(void)
         "New window2"
     );
 
-
     // 모든 window를 포함한 화면 재출력
     wm_draw_all();
+
+    int mx = 150, my = 100;
+    draw_mouse_cursor(mx, my);
 
     while (1) {
         if (keyboard_has_char()) {
@@ -51,6 +63,19 @@ void kernel_main(void)
             if (c) {
                 window_put_char(testwin, c, COLOR_BLACK);
             }
+        }
+
+        int new_mx = get_mouse_x();
+        int new_my = get_mouse_y();
+
+        if (new_mx != mx || new_my != my) {
+            // 일단 화면 초기화
+            wm_draw_all();
+            // 새 위치에 커서 다시 그림
+            draw_mouse_cursor(new_mx, new_my);
+
+            mx = new_mx;
+            my = new_my;
         }
     }
 }

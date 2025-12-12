@@ -1,5 +1,3 @@
-// kernel/keyboard.c
-
 #include "keyboard.h"
 
 // Scan code set 1 기준 ASCII 매핑 테이블
