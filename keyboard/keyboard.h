@@ -1,11 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-
-// boolean 타입 정의
-typedef uint8_t bool;
-#define true  1
-#define false 0
+#include <stdbool.h>
 
 // 키보드 상태 초기화 함수
 void keyboard_reset_state(void);
