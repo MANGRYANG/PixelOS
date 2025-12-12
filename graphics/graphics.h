@@ -16,3 +16,6 @@ uint8_t gfx_getpixel(int x, int y);
 void gfx_fill_rect(int x, int y, int w, int h, uint8_t color);
 // 특정 좌표에서 w * h 크기의 사각형을 테두리만 그리는 함수
 void gfx_draw_rect(int x, int y, int w, int h, uint8_t color);
+
+// 프레임 출력 함수
+void gfx_present(void);

@@ -2,12 +2,25 @@
 
 static uint8_t* const vga = (uint8_t*)VGA_ADDR;
 
+// 백 버퍼
+static uint8_t backbuffer[WIDTH * HEIGHT];
+// 그리기 대상 버퍼
+static uint8_t* const draw = backbuffer;
+
+void gfx_present(void)
+{
+    for (int i = 0; i < WIDTH * HEIGHT; ++i)
+    {
+        vga[i] = backbuffer[i];
+    }
+}
+
 // 화면 지우기 함수
 void gfx_clear(uint8_t color)
 {
     for (int i = 0; i < WIDTH * HEIGHT; ++i)
     {
-        vga[i] = color;
+        draw[i] = color;
     }
 }
 
@@ -20,7 +33,7 @@ void gfx_putpixel(int x, int y, uint8_t color)
         return;
     }
     // 인자로 주어진 좌표의 픽셀의 색 변경
-    vga[y * WIDTH + x] = color;
+    draw[y * WIDTH + x] = color;
 }
 
 // 특정 좌표에 위치한 픽셀의 색을 읽어오는 함수
@@ -32,7 +45,7 @@ uint8_t gfx_getpixel(int x, int y)
         return 0;
     }
     // 인자로 주어진 좌표의 픽셀의 색 반환
-    return vga[y * WIDTH + x];
+    return draw[y * WIDTH + x];
 }
 
 // 특정 좌표에서 w * h 크기의 사각형을 색으로 채워 그리는 함수
@@ -52,7 +65,7 @@ void gfx_fill_rect(int x, int y, int w, int h, uint8_t color)
             if (current_x < 0 || current_x >= WIDTH) continue;
 
             // 이외의 경우 색 변경
-            vga[current_y * WIDTH + current_x] = color;
+            draw[current_y * WIDTH + current_x] = color;
         }
     }
 }
