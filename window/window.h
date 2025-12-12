@@ -3,8 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// z-index 관리를 위한 전역 변수 설정
-static int g_top_zindex = 0;
+extern int g_top_zindex;
 
 // Window 구조체 타입 정의
 typedef struct Window

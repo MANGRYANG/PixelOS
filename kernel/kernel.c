@@ -58,13 +58,6 @@ void kernel_main(void)
     draw_mouse_cursor(mx, my);
 
     while (1) {
-        if (keyboard_has_char()) {
-            char c = keyboard_get_char();
-            if (c) {
-                window_put_char(testwin, c, COLOR_BLACK);
-            }
-        }
-
         int new_mx = get_mouse_x();
         int new_my = get_mouse_y();
 

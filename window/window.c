@@ -13,6 +13,8 @@ static Window g_windows[MAX_WINDOWS];
 static Window* g_order[MAX_WINDOWS];
 static int g_order_count = 0;
 
+int g_top_zindex = 0;
+
 // window manager 초기화
 void wm_init(void)
 {
