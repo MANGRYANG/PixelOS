@@ -46,8 +46,7 @@ void kernel_main(void)
         "New window2"
     );
 
-    // 모든 window를 포함한 화면 재출력
-    wm_draw_all();
+    wm_composite();
 
     int mx = get_mouse_x();
     int my = get_mouse_y();
