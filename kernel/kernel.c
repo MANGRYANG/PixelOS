@@ -3,15 +3,10 @@
 #include "../kernel/interrupts.h"
 #include "../keyboard/keyboard.h"
 #include "../mouse/mouse.h"
+#include "../mouse/cursor.h"
 #include "../graphics/graphics.h"
 #include "../graphics/color.h"
 #include "../window/window.h"
-
-void draw_mouse_cursor(int x, int y)
-{
-    // 간단한 8x8 검정 네모 커서
-    gfx_fill_rect(x, y, 8, 8, COLOR_BLACK);
-}
 
 void kernel_main(void)
 {   
@@ -54,19 +49,16 @@ void kernel_main(void)
     // 모든 window를 포함한 화면 재출력
     wm_draw_all();
 
-    int mx = 150, my = 100;
-    draw_mouse_cursor(mx, my);
+    int mx = get_mouse_x();
+    int my = get_mouse_y();
+    cursor_init(mx, my);
 
     while (1) {
         int new_mx = get_mouse_x();
         int new_my = get_mouse_y();
 
         if (new_mx != mx || new_my != my) {
-            // 일단 화면 초기화
-            wm_draw_all();
-            // 새 위치에 커서 다시 그림
-            draw_mouse_cursor(new_mx, new_my);
-
+            cursor_move(new_mx, new_my);
             mx = new_mx;
             my = new_my;
         }
