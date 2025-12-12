@@ -18,9 +18,15 @@ void cursor_set_pos(int x, int y)
     cy = y;
 }
 
-void cursor_draw()
+void cursor_render(void)
 {
-    gfx_fill_rect_front(cx, cy, CURSOR_W, CURSOR_H, COLOR_BLACK);
+    for (int y = 0; y < CURSOR_H; ++y)
+    {
+        for (int x = 0; x < CURSOR_W; ++x)
+        {
+            gfx_putpixel(cx + x, cy + y, COLOR_LIGHT_MAGENTA);
+        }
+    }
 }
 
 int cursor_get_x(void) { return cx; }

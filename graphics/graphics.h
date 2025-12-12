@@ -17,9 +17,8 @@ void gfx_fill_rect(int x, int y, int w, int h, uint8_t color);
 // 특정 좌표에서 w * h 크기의 사각형을 테두리만 그리는 함수
 void gfx_draw_rect(int x, int y, int w, int h, uint8_t color);
 
-// 백 버퍼가 아닌 VGA에 직접 그리는 함수
-void gfx_putpixel_front(int x, int y, uint8_t color);
-void gfx_fill_rect_front(int x, int y, int w, int h, uint8_t color);
+// 백 버퍼의 내용을 VGA 메모리로 출력하는 함수
+void gfx_present(void);
 
-// 커서를 포함한 프레임 출력 함수
-void gfx_present_with_cursor(int cx, int cy, uint8_t cursor_color);
+// VSYNC 동기화 함수
+void gfx_wait_vsync(void);

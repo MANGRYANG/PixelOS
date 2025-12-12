@@ -51,7 +51,11 @@ void kernel_main(void)
     int mx = get_mouse_x();
     int my = get_mouse_y();
     cursor_init(mx, my);
-    gfx_present_with_cursor(mx, my, COLOR_LIGHT_RED);
+
+    wm_composite();
+    cursor_render();
+    gfx_present();
+
 
     while (1) {
         int new_mx = get_mouse_x();
@@ -63,6 +67,8 @@ void kernel_main(void)
             my = new_my;
         }
         
-        gfx_present_with_cursor(mx, my, COLOR_LIGHT_RED);
+        wm_composite();
+        cursor_render();
+        gfx_present();
     }
 }

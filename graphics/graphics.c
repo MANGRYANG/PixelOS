@@ -1,31 +1,12 @@
 #include "graphics.h"
+#include "../kernel/io.h"
 
-static uint8_t* const vga = (uint8_t*)VGA_ADDR;
+static volatile uint8_t* const vga = (volatile uint8_t*)VGA_ADDR;
 
 // 백 버퍼
 static uint8_t backbuffer[WIDTH * HEIGHT];
 // 그리기 대상 버퍼
 static uint8_t* const draw = backbuffer;
-
-void gfx_present_with_cursor(int cx, int cy, uint8_t cursor_color)
-{
-    const int cw = 8, ch = 8;
-
-    for (int y = 0; y < HEIGHT; ++y)
-    {
-        int row = y * WIDTH;
-        for (int x = 0; x < WIDTH; ++x)
-        {
-            uint8_t c = backbuffer[row + x];
-
-            // 커서 영역이면 커서색으로 오버레이
-            if (x >= cx && x < cx + cw && y >= cy && y < cy + ch)
-                c = cursor_color;
-
-            vga[row + x] = c;
-        }
-    }
-}
 
 // 화면 지우기 함수
 void gfx_clear(uint8_t color)
@@ -99,25 +80,24 @@ void gfx_draw_rect(int x, int y, int w, int h, uint8_t color)
     }
 }
 
-// -- 백 버퍼가 아닌 VGA에 직접 그리는 함수 --
-void gfx_putpixel_front(int x, int y, uint8_t color)
+// 백 버퍼의 내용을 VGA 메모리로 출력하는 함수
+void gfx_present(void)
 {
-    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return;
-    vga[y * WIDTH + x] = color;
+    gfx_wait_vsync();
+
+    uint32_t* dst = (uint32_t*)vga;
+    uint32_t* src = (uint32_t*)backbuffer;
+
+    const int dwords = (WIDTH * HEIGHT) / 4;
+    for (int i = 0; i < dwords; ++i)
+    {
+        dst[i] = src[i];
+    }
 }
 
-void gfx_fill_rect_front(int x, int y, int w, int h, uint8_t color)
+// VSYNC 동기화 함수
+void gfx_wait_vsync(void)
 {
-    for (int row = 0; row < h; ++row)
-    {
-        int current_y = y + row;
-        if (current_y < 0 || current_y >= HEIGHT) continue;
-
-        for (int column = 0; column < w; ++column)
-        {
-            int current_x = x + column;
-            if (current_x < 0 || current_x >= WIDTH) continue;
-            vga[current_y * WIDTH + current_x] = color;
-        }
-    }
+    while (inb(0x3DA) & 0x08) { }
+    while (!(inb(0x3DA) & 0x08)) { }
 }
