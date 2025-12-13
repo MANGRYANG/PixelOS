@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "../graphics/layer.h"
+
 extern int g_top_zindex;
 
 // Window 구조체 타입 정의
@@ -35,6 +37,9 @@ typedef struct Window
     uint8_t* buffer;
     // 논리적인 window 너비
     int stride;
+
+    // 레이어
+    Layer layer;
 } Window;
 
 // window manager 초기화

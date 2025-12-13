@@ -2,6 +2,7 @@
 #include "../font/font.h"
 #include "../graphics/graphics.h"
 #include "../graphics/color.h"
+#include "../graphics/layer_manager.h"
 #include "../mouse/cursor.h"
 
 // 최대로 허용되는 window 개수
@@ -109,6 +110,18 @@ Window* wm_create_window(int px, int py, int width, int height,
             // 윈도우 백 버퍼 연결
             win->buffer = g_window_buffers[i];
             win->stride = width;
+
+            // 레이어 설정
+            win->layer.x = px;
+            win->layer.y = py;
+            win->layer.w = width;
+            win->layer.h = height;
+            win->layer.buffer = win->buffer;
+            win->layer.z = win->z_index;
+            win->layer.type = LAYER_WINDOW;
+            win->layer.visible = 1;
+
+            layer_add(&win->layer);
 
             // 프레임 초기 렌더링
             window_draw_frame(win);
@@ -314,45 +327,30 @@ void wm_composite(void)
     // desktop 배경
     gfx_clear(COLOR_LIGHT_GRAY);
 
-    wm_refresh_order();
+    int count;
+    // 레이어 매니저에서 관리 중인 모든 레이어를 z-index 순서로 읽기
+    Layer** layers = layer_get_all(&count);
 
-    // window 레이어
-    for (int i = 0; i < g_order_count; ++i)
+    for (int i = 0; i < count; ++i)
     {
-        Window* w = g_order[i];
-        if (!w->in_use) continue;
+        Layer* layer = layers[i];
+        // 레이어가 비가시 설정인 경우 다음 레이어로 이동
+        if (!layer->visible) continue;
 
-        for (int y = 0; y < w->height; ++y)
+        for (int y = 0; y < layer->h; ++y)
         {
-            int sy = w->py + y;
+            int sy = layer->y + y;
+            // y축 범위가 화면 범위를 넘어서는 경우 무시
             if (sy < 0 || sy >= HEIGHT) continue;
 
-            for (int x = 0; x < w->width; x++)
+            for (int x = 0; x < layer->w; ++x)
             {
-                int sx = w->px + x;
+                int sx = layer->x + x;
+                // x축 범위가 화면 범위를 넘어서는 경우 무시
                 if (sx < 0 || sx >= WIDTH) continue;
 
-                uint8_t c = w->buffer[y * w->stride + x];
-                gfx_putpixel(sx, sy, c);
-            }
-        }
-    }
-
-    // 커서 레이어
-    Layer* cursor = cursor_get_layer();
-    if (cursor && cursor->visible)
-    {
-        for (int y = 0; y < cursor->h; ++y)
-        {
-            int sy = cursor->y + y;
-            if (sy < 0 || sy >= HEIGHT) continue;
-
-            for (int x = 0; x < cursor->w; ++x)
-            {
-                int sx = cursor->x + x;
-                if (sx < 0 || sx >= WIDTH) continue;
-
-                uint8_t c = cursor->buffer[y * cursor->w + x];
+                // 레이어의 (x, y) 픽셀을 화면 백 버퍼에 합성
+                uint8_t c = layer->buffer[y * layer->w + x];
                 gfx_putpixel(sx, sy, c);
             }
         }

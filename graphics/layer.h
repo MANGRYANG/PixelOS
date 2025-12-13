@@ -3,7 +3,6 @@
 #include <stdint.h>
 
 typedef enum {
-    LAYER_DESKTOP,
     LAYER_WINDOW,
     LAYER_CURSOR,
 } LayerType;
