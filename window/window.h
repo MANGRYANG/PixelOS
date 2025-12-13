@@ -27,9 +27,6 @@ typedef struct Window
     int cursor_x;
     int cursor_y;
 
-    // 윈도우 순서 설정을 위한 z-index
-    int z_index;
-
     // window의 활성 상태
     bool in_use;
 
@@ -47,6 +44,8 @@ void wm_init(void);
 
 // window 생성 함수
 Window* wm_create_window(int px, int py, int width, int height, uint8_t bg_color, uint8_t border_color, const char* title);
+// window 삭제 함수
+void wm_destroy_window(Window* win);
 
 // window 버퍼에 텍스트를 출력하는 함수
 void window_draw_char(Window* w, int x, int y, char c, uint8_t color);
