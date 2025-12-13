@@ -57,6 +57,3 @@ void window_put_string(Window* win, const char* s, uint8_t color);
 
 // window를 최상위 레이어로 이동시키는 함수
 void wm_bring_to_front(Window* win);
-
-// 합성 출력 함수
-void wm_composite(void);

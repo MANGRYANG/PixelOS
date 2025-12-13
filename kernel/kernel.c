@@ -6,6 +6,7 @@
 #include "../mouse/cursor.h"
 #include "../graphics/graphics.h"
 #include "../graphics/color.h"
+#include "../graphics/compositor.h"
 #include "../window/window.h"
 
 void kernel_main(void)
@@ -46,14 +47,13 @@ void kernel_main(void)
         "New window2"
     );
 
-    wm_composite();
+    compositor_compose();
 
     int mx = get_mouse_x();
     int my = get_mouse_y();
     cursor_init(mx, my);
 
-    wm_composite();
-    gfx_present();
+    compositor_compose();
 
 
     while (1) {
@@ -66,7 +66,6 @@ void kernel_main(void)
             my = new_my;
         }
         
-        wm_composite();
-        gfx_present();
+        compositor_compose();
     }
 }
