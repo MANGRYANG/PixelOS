@@ -71,10 +71,24 @@ static void window_draw_frame(Window* w)
 }
 
 // 새 window 생성
-Window* wm_create_window(int px, int py, int width, int height,
-                         uint8_t bg_color, uint8_t border_color,
-                         const char* title)
+Window* wm_create_window(int px, int py, int width, int height, uint8_t bg_color, uint8_t border_color, const char* title)
 {
+    // 윈도우 크기 검증 코드
+    if (width <= 0 || height <= 0)
+    {
+        return 0;
+    }
+
+    if (width > MAX_W)
+    {
+        width = MAX_W;
+    }   
+
+    if (height > MAX_H)
+    {
+        height = MAX_H;
+    }
+
     for (int i = 0; i < MAX_WINDOWS; ++i)
     {
         // 비활성 상태인 window가 존재하는 경우
