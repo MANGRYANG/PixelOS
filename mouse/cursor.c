@@ -1,6 +1,7 @@
 #include "cursor.h"
 #include "../graphics/graphics.h"
 #include "../graphics/color.h"
+#include "../graphics/layer_manager.h"
 
 #define CURSOR_W 8
 #define CURSOR_H 8
@@ -26,6 +27,8 @@ void cursor_init(int x, int y)
     cursor_layer.z = 100;   // 항상 최상위 레이어로 사용
     cursor_layer.type = LAYER_CURSOR;
     cursor_layer.visible = 1;
+
+    layer_add(&cursor_layer);
 }
 
 // 커서 레이어 반환 함수

@@ -83,9 +83,12 @@ bool keyboard_has_char(void)
 // 버퍼에서 문자를 반환하는 함수
 char keyboard_get_char(void)
 {
+    asm volatile("cli");
+
     // 버퍼가 비어 있는 경우 0 반환
     if (buf_head == buf_tail)
     {
+        asm volatile("sti");
         return 0;
     }
     
@@ -94,6 +97,7 @@ char keyboard_get_char(void)
     // buf_tail의 위치를 다음 위치로 이동
     buf_tail = (buf_tail + 1) % KBD_BUFFER_SIZE;
     
+    asm volatile("sti");
     return c;
 }
 

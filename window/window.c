@@ -2,6 +2,7 @@
 #include "../font/font.h"
 #include "../graphics/graphics.h"
 #include "../graphics/color.h"
+#include "../graphics/layer_manager.h"
 #include "../mouse/cursor.h"
 
 // 최대로 허용되는 window 개수
@@ -14,12 +15,6 @@
 // window 정보를 저장할 정적 배열
 static Window g_windows[MAX_WINDOWS];
 
-// z-index 순서대로 그리기 위한 포인터 배열
-static Window* g_order[MAX_WINDOWS];
-static int g_order_count = 0;
-
-int g_top_zindex = 0;
-
 // 윈도우 버퍼
 static uint8_t g_window_buffers[MAX_WINDOWS][MAX_W * MAX_H];
 
@@ -30,10 +25,8 @@ void wm_init(void)
     for (int i = 0; i < MAX_WINDOWS; ++i)
     {
         g_windows[i].in_use = false;
-        g_order[i] = 0;
         g_windows[i].buffer = 0;
     }
-    g_order_count = 0;
 }
 
 // 윈도우 백 버퍼에 픽셀을 그리는 내부 인라인 함수
@@ -78,10 +71,24 @@ static void window_draw_frame(Window* w)
 }
 
 // 새 window 생성
-Window* wm_create_window(int px, int py, int width, int height,
-                         uint8_t bg_color, uint8_t border_color,
-                         const char* title)
+Window* wm_create_window(int px, int py, int width, int height, uint8_t bg_color, uint8_t border_color, const char* title)
 {
+    // 윈도우 크기 검증 코드
+    if (width <= 0 || height <= 0)
+    {
+        return 0;
+    }
+
+    if (width > MAX_W)
+    {
+        width = MAX_W;
+    }   
+
+    if (height > MAX_H)
+    {
+        height = MAX_H;
+    }
+
     for (int i = 0; i < MAX_WINDOWS; ++i)
     {
         // 비활성 상태인 window가 존재하는 경우
@@ -103,12 +110,25 @@ Window* wm_create_window(int px, int py, int width, int height,
             // 새 window를 활성 상태로 변경
             win->in_use = true;
 
-            // 새로 생성된 window를 가장 상위 레이어로 자동 배치
-            win->z_index = g_top_zindex++;
-
             // 윈도우 백 버퍼 연결
             win->buffer = g_window_buffers[i];
             win->stride = width;
+
+            // 레이어 설정
+            win->layer.x = px;
+            win->layer.y = py;
+            win->layer.w = width;
+            win->layer.h = height;
+            win->layer.buffer = win->buffer;
+            win->layer.type = LAYER_WINDOW;
+            win->layer.visible = 1;
+
+            if(!layer_add(&win->layer))
+            {
+                win->in_use = false;
+                win-> buffer = 0;
+                return 0;
+            }
 
             // 프레임 초기 렌더링
             window_draw_frame(win);
@@ -121,62 +141,18 @@ Window* wm_create_window(int px, int py, int width, int height,
     return 0;
 }
 
-// g_order 포인터 배열을 활성 상태인 window로 채우는 함수
-static void wm_build_order_list(void)
+// window 삭제 함수
+void wm_destroy_window(Window* win)
 {
-    g_order_count = 0;
-
-    for (int i = 0; i < MAX_WINDOWS; ++i)
+    if (!win || !win->in_use)
     {
-        if (g_windows[i].in_use)
-        {
-            g_order[g_order_count++] = &g_windows[i];
-        }
+        return;
     }
 
-    // 나머지는 0으로 정리
-    for (int i = g_order_count; i < MAX_WINDOWS; ++i)
-    {
-        g_order[i] = 0;
-    }
-}
+    layer_remove(&win->layer);
 
-// z-index의 오버플로우 방지를 위한 z-index 일반화 함수
-static void wm_normalize_zindex()
-{
-    for (int i = 0; i < g_order_count; ++i)
-    {
-        g_order[i]->z_index = i;
-    }
-
-    g_top_zindex = g_order_count;
-}
-
-// z-index 기준으로 window를 정렬하기 위한 내부 함수 정의
-// Insert sort 사용
-static void wm_sort_by_zindex()
-{
-    for (int i = 1; i < g_order_count; ++i)
-    {
-        Window* key = g_order[i];
-        int j = i - 1;
-
-        while (j >= 0 && g_order[j]->z_index > key->z_index)
-        {
-            g_order[j + 1] = g_order[j];
-            --j;
-        }
-
-        g_order[j + 1] = key;
-    }
-}
-
-// 정렬/정규화 파이프라인
-static void wm_refresh_order()
-{
-    wm_build_order_list();
-    wm_sort_by_zindex();
-    wm_normalize_zindex();
+    win->in_use = false;
+    win->buffer = 0;
 }
 
 // 윈도우 버퍼에 문자 출력 함수
@@ -305,56 +281,5 @@ void wm_bring_to_front(Window* win)
         return;
     }
 
-    win->z_index = g_top_zindex++;
-    wm_refresh_order();
-}
-
-void wm_composite(void)
-{
-    // desktop 배경
-    gfx_clear(COLOR_LIGHT_GRAY);
-
-    wm_refresh_order();
-
-    // window 레이어
-    for (int i = 0; i < g_order_count; ++i)
-    {
-        Window* w = g_order[i];
-        if (!w->in_use) continue;
-
-        for (int y = 0; y < w->height; ++y)
-        {
-            int sy = w->py + y;
-            if (sy < 0 || sy >= HEIGHT) continue;
-
-            for (int x = 0; x < w->width; x++)
-            {
-                int sx = w->px + x;
-                if (sx < 0 || sx >= WIDTH) continue;
-
-                uint8_t c = w->buffer[y * w->stride + x];
-                gfx_putpixel(sx, sy, c);
-            }
-        }
-    }
-
-    // 커서 레이어
-    Layer* cursor = cursor_get_layer();
-    if (cursor && cursor->visible)
-    {
-        for (int y = 0; y < cursor->h; ++y)
-        {
-            int sy = cursor->y + y;
-            if (sy < 0 || sy >= HEIGHT) continue;
-
-            for (int x = 0; x < cursor->w; ++x)
-            {
-                int sx = cursor->x + x;
-                if (sx < 0 || sx >= WIDTH) continue;
-
-                uint8_t c = cursor->buffer[y * cursor->w + x];
-                gfx_putpixel(sx, sy, c);
-            }
-        }
-    }
+    layer_bring_to_front(&win->layer);
 }

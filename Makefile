@@ -76,6 +76,18 @@ $(BUILD_DIR)/graphics.o: $(GRAPHICS_DIR)/graphics.c
 	-c $(GRAPHICS_DIR)/graphics.c \
 	-o $(BUILD_DIR)/graphics.o
 
+$(BUILD_DIR)/layer_manager.o: $(GRAPHICS_DIR)/layer_manager.c
+	@echo "==> Compiling layer manager..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(GRAPHICS_DIR)/layer_manager.c \
+	-o $(BUILD_DIR)/layer_manager.o
+
+$(BUILD_DIR)/compositor.o: $(GRAPHICS_DIR)/compositor.c
+	@echo "==> Compiling composite module..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(GRAPHICS_DIR)/compositor.c \
+	-o $(BUILD_DIR)/compositor.o
+
 $(BUILD_DIR)/window.o: $(WINDOW_DIR)/window.c
 	@echo "==> Compiling window manager..."
 	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
@@ -88,14 +100,14 @@ $(BUILD_DIR)/kernel.bin: \
     $(BUILD_DIR)/font.o \
     $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
     $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/mouse.o $(BUILD_DIR)/cursor.o \
-	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o
+	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o $(BUILD_DIR)/layer_manager.o $(BUILD_DIR)/compositor.o 
 	@echo "==> Linking kernel..."
 	$(LD) -m elf_i386 -T $(LINKER_DIR)/linker.ld \
 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
 	$(BUILD_DIR)/font.o \
 	$(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
 	$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/mouse.o $(BUILD_DIR)/cursor.o \
-	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o \
+	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o $(BUILD_DIR)/layer_manager.o $(BUILD_DIR)/compositor.o \
 	-o $(BUILD_DIR)/kernel.elf
 	objcopy -O binary $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel.bin
 
