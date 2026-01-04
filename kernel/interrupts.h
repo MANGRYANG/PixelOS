@@ -10,3 +10,5 @@ void irq_enable_mouse(void);        // 마우스 IRQ 활성화
 void timer_handler(void);           // 타이머 인터럽트 핸들러
 void keyboard_handler(void);        // 키보드 인터럽트 핸들러
 void mouse_handler(void);           // 마우스 인터럽트 핸들러
+
+extern volatile uint32_t g_timer_ticks;

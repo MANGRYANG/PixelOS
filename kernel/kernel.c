@@ -55,8 +55,15 @@ void kernel_main(void)
 
     compositor_compose();
 
+    uint32_t last_tick = g_timer_ticks;
 
     while (1) {
+        // tick이 바뀔 때까지 대기
+        while (g_timer_ticks == last_tick)
+        {
+            asm volatile("hlt");
+        }
+
         int new_mx = get_mouse_x();
         int new_my = get_mouse_y();
 
