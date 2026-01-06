@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include "../font/font.h"
 #include "../kernel/interrupts.h"
+#include "../kernel/event_queue.h"
+#include "../kernel/event.h"
 #include "../keyboard/keyboard.h"
 #include "../mouse/mouse.h"
 #include "../mouse/cursor.h"
@@ -23,6 +25,8 @@ void kernel_main(void)
 
     keyboard_reset_state();
     mouse_init();
+
+    event_queue_init();
 
     asm volatile ("sti");
 
@@ -64,13 +68,27 @@ void kernel_main(void)
             asm volatile("hlt");
         }
 
-        int new_mx = get_mouse_x();
-        int new_my = get_mouse_y();
+        // 이벤트 처리
+        Event ev;
+        while (event_pop(&ev)) {
+            switch (ev.type) {
+            case EV_MOUSE_MOVE:
+                cursor_set_pos(ev.mouse_move.x, ev.mouse_move.y);
+                break;
 
-        if (new_mx != mx || new_my != my) {
-            cursor_set_pos(new_mx, new_my);
-            mx = new_mx;
-            my = new_my;
+            case EV_MOUSE_BUTTON:
+
+                break;
+
+            case EV_KEY:
+                if (ev.key.pressed && ev.key.ascii) {
+                    window_put_char(testwin, ev.key.ascii, COLOR_BLACK);
+                }
+                break;
+
+            default:
+                break;
+            }
         }
         
         compositor_compose();

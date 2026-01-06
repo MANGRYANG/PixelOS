@@ -1,4 +1,6 @@
 #include "keyboard.h"
+#include "../kernel/event_queue.h"
+#include "../kernel/event.h"
 
 // Scan code set 1 기준 ASCII 매핑 테이블
 // 기능 키(Escape, Shift, Alt)는 0으로 매핑
@@ -161,6 +163,13 @@ void keyboard_on_scancode(uint8_t scancode)
         return;
     }
 
+    // 이벤트 생성
+    Event ev = {0};
+    ev.type = EV_KEY;
+    ev.key.scancode = code;
+    ev.key.pressed = is_break ? 0 : 1;
+    ev.key.ascii = 0;
+
     // break code인 경우 (키가 떼질 때 발생하는 신호인 경우)
     if (is_break)
     {
@@ -173,6 +182,9 @@ void keyboard_on_scancode(uint8_t scancode)
             // Shift 키의 상태를 false로 설정
             shift_pressed = false;
         }
+
+        event_push(&ev);
+        return;
     }
 
     // make code인 경우 (키가 눌릴 때 발생하는 신호인 경우)
@@ -185,6 +197,7 @@ void keyboard_on_scancode(uint8_t scancode)
         {
             // Shift 키의 상태를 true로 설정
             shift_pressed = true;
+            event_push(&ev);
             return;
         }
 
@@ -193,6 +206,7 @@ void keyboard_on_scancode(uint8_t scancode)
         {
             // Caps Lock 상태를 변경
             capslock_enabled = !capslock_enabled;
+            event_push(&ev);
             return;
         }
 
@@ -203,6 +217,8 @@ void keyboard_on_scancode(uint8_t scancode)
         if (c)
         {
             buffer_push(c);
+            ev.key.ascii = c;
         }
+        event_push(&ev);
     }
 }
