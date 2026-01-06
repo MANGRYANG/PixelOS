@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "../font/font.h"
+#include "../kernel/heap.h"
 #include "../kernel/interrupts.h"
 #include "../kernel/event_queue.h"
 #include "../kernel/event.h"
@@ -13,6 +14,9 @@
 
 void kernel_main(void)
 {   
+    // 힙 초기화
+    heap_init();
+
     // 화면 초기화
     gfx_clear(COLOR_LIGHT_GRAY);
 

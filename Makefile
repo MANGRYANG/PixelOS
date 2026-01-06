@@ -36,6 +36,12 @@ $(BUILD_DIR)/kernel.o: $(KERNEL_DIR)/kernel.c
 	-c $(KERNEL_DIR)/kernel.c \
 	-o $(BUILD_DIR)/kernel.o
 
+$(BUILD_DIR)/heap.o: $(KERNEL_DIR)/heap.c
+	@echo "==> Compiling heap..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(KERNEL_DIR)/heap.c \
+	-o $(BUILD_DIR)/heap.o
+
 $(BUILD_DIR)/font.o: $(FONT_DIR)/font.c
 	@echo "==> Compiling font..."
 	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
@@ -102,14 +108,14 @@ $(BUILD_DIR)/window.o: $(WINDOW_DIR)/window.c
 
 # 커널 링크
 $(BUILD_DIR)/kernel.bin: \
-    $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
+    $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/heap.o \
     $(BUILD_DIR)/font.o \
     $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o $(BUILD_DIR)/event_queue.o \
     $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/mouse.o $(BUILD_DIR)/cursor.o \
 	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o $(BUILD_DIR)/layer_manager.o $(BUILD_DIR)/compositor.o 
 	@echo "==> Linking kernel..."
 	$(LD) -m elf_i386 -T $(LINKER_DIR)/linker.ld \
-	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
+	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/heap.o \
 	$(BUILD_DIR)/font.o \
 	$(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o $(BUILD_DIR)/event_queue.o \
 	$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/mouse.o $(BUILD_DIR)/cursor.o \
