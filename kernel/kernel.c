@@ -2,6 +2,7 @@
 #include "../font/font.h"
 #include "../kernel/heap.h"
 #include "../kernel/interrupts.h"
+#include "../kernel/sched.h"
 #include "../kernel/event_queue.h"
 #include "../kernel/event.h"
 #include "../keyboard/keyboard.h"
@@ -11,6 +12,44 @@
 #include "../graphics/color.h"
 #include "../graphics/compositor.h"
 #include "../window/window.h"
+
+static Window* g_testwin = 0;
+
+static void ui_task_step(void)
+{
+    Event ev;
+    while (event_pop(&ev))
+    {
+        if (ev.type == EV_MOUSE_MOVE)
+        {
+            cursor_set_pos(ev.mouse_move.x, ev.mouse_move.y);
+        }
+        
+        else if (ev.type == EV_KEY)
+        {
+            if (ev.key.pressed && ev.key.ascii && g_testwin)
+            {
+                window_put_char(g_testwin, ev.key.ascii, COLOR_BLACK);
+            }
+        }
+    }
+
+    compositor_compose();
+}
+
+static int gx = 10, gy = 30;
+static int gvx = 1;
+
+static void app_task_step(void)
+{
+    if (!g_testwin) return;
+
+    gx += gvx;
+    if (gx < 4) { gx = 4; gvx = 1; }
+    if (gx > g_testwin->width - 12) { gx = g_testwin->width - 12; gvx = -1; }
+
+    window_put_char(g_testwin, '.', COLOR_RED);
+}
 
 void kernel_main(void)
 {   
@@ -38,7 +77,7 @@ void kernel_main(void)
     wm_init();
 
     // 테스트용 window 생성
-    Window* testwin = wm_create_window(
+    wm_create_window(
         8, 8,                   // px, py
         200, 160,               // width, height
         COLOR_WHITE,            // window 배경색은 흰색으로 설정
@@ -47,7 +86,7 @@ void kernel_main(void)
     );
 
     // 테스트용 window 생성
-    Window* testwin2 = wm_create_window(
+    g_testwin = wm_create_window(
         50, 50,
         200, 140,
         COLOR_WHITE,
@@ -55,13 +94,16 @@ void kernel_main(void)
         "New window2"
     );
 
-    compositor_compose();
-
     int mx = get_mouse_x();
     int my = get_mouse_y();
     cursor_init(mx, my);
 
     compositor_compose();
+
+    // 스케줄러 등록
+    sched_init();
+    sched_add_task(app_task_step);
+    sched_add_task(ui_task_step);
 
     uint32_t last_tick = g_timer_ticks;
 
@@ -72,29 +114,9 @@ void kernel_main(void)
             asm volatile("hlt");
         }
 
-        // 이벤트 처리
-        Event ev;
-        while (event_pop(&ev)) {
-            switch (ev.type) {
-            case EV_MOUSE_MOVE:
-                cursor_set_pos(ev.mouse_move.x, ev.mouse_move.y);
-                break;
+        last_tick = g_timer_ticks;
 
-            case EV_MOUSE_BUTTON:
-
-                break;
-
-            case EV_KEY:
-                if (ev.key.pressed && ev.key.ascii) {
-                    window_put_char(testwin, ev.key.ascii, COLOR_BLACK);
-                }
-                break;
-
-            default:
-                break;
-            }
-        }
-        
-        compositor_compose();
+        // 프레임당 태스크들을 한 번씩 실행
+        sched_run_one_frame();
     }
 }
