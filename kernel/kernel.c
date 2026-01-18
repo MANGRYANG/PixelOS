@@ -2,7 +2,6 @@
 #include "../font/font.h"
 #include "../kernel/heap.h"
 #include "../kernel/interrupts.h"
-#include "../kernel/sched.h"
 #include "../kernel/task.h"
 #include "../kernel/event_queue.h"
 #include "../kernel/event.h"
