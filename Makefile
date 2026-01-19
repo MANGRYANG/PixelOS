@@ -74,6 +74,12 @@ $(BUILD_DIR)/task.o: $(KERNEL_DIR)/task.c
 	-c $(KERNEL_DIR)/task.c \
 	-o $(BUILD_DIR)/task.o
 
+$(BUILD_DIR)/timer.o: $(KERNEL_DIR)/timer.c
+	@echo "==> Compiling timer..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(KERNEL_DIR)/timer.c \
+	-o $(BUILD_DIR)/timer.o
+
 $(BUILD_DIR)/keyboard.o: $(KEYBOARD_DIR)/keyboard.c
 	@echo "==> Compiling keyboard input dirver..."
 	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
@@ -121,11 +127,13 @@ $(BUILD_DIR)/kernel.bin: \
     $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/heap.o \
     $(BUILD_DIR)/font.o \
     $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o $(BUILD_DIR)/event_queue.o $(BUILD_DIR)/task.o $(BUILD_DIR)/task_switch.o \
+	$(BUILD_DIR)/timer.o \
     $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/mouse.o $(BUILD_DIR)/cursor.o \
 	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o $(BUILD_DIR)/layer_manager.o $(BUILD_DIR)/compositor.o 
 	@echo "==> Linking kernel..."
 	$(LD) -m elf_i386 -T $(LINKER_DIR)/linker.ld \
 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/heap.o $(BUILD_DIR)/task.o $(BUILD_DIR)/task_switch.o \
+	$(BUILD_DIR)/timer.o \
 	$(BUILD_DIR)/font.o \
 	$(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o $(BUILD_DIR)/event_queue.o \
 	$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/mouse.o $(BUILD_DIR)/cursor.o \

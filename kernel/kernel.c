@@ -5,6 +5,7 @@
 #include "../kernel/task.h"
 #include "../kernel/event_queue.h"
 #include "../kernel/event.h"
+#include "../kernel/timer.h"
 #include "../keyboard/keyboard.h"
 #include "../mouse/mouse.h"
 #include "../mouse/cursor.h"
@@ -14,6 +15,16 @@
 #include "../window/window.h"
 
 static Window* g_testwin = 0;
+
+// 유휴 상태를 위한 태스크
+static void idle_task(void* arg)
+{
+    (void)arg;
+    for (;;) {
+        asm volatile("sti; hlt");   // 인터럽트로만 깨어남
+        task_yield();               // 깨어나면 다른 태스크에게 CPU 양보
+    }
+}
 
 // UI 작업을 위한 태스크
 static void ui_task(void* arg)
@@ -25,7 +36,8 @@ static void ui_task(void* arg)
     for (;;) {
         // 프레임 경계 대기
         while (g_timer_ticks == last_tick) {
-            asm volatile("hlt");
+            task_yield();
+            continue;
         }
         last_tick = g_timer_ticks;
 
@@ -78,6 +90,9 @@ void kernel_main(void)
     // 인터럽트 설정
     interrupts_init();
 
+    // PIT 주파수 설정 (100Hz)
+    pit_set_frequency(100);
+
     irq_enable_timer();
     irq_enable_keyboard();
     irq_enable_mouse();
@@ -105,8 +120,9 @@ void kernel_main(void)
     compositor_compose();
 
     task_init();
-    task_create(ui_task, 0, 32768);
-    task_create(app_task, 0, 32768);
+    task_create(idle_task, 0, 8192);
+    task_create(ui_task, 0, 8192);
+    task_create(app_task, 0, 8192);
 
     task_start();
 }
