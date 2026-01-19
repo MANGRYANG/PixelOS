@@ -36,7 +36,7 @@ static void ui_task(void* arg)
     for (;;) {
         // 프레임 경계 대기
         while (g_timer_ticks == last_tick) {
-            task_yield();
+            task_sleep(1);
             continue;
         }
         last_tick = g_timer_ticks;
@@ -75,7 +75,7 @@ static void app_task(void* arg)
             window_put_char(g_testwin, '.', COLOR_RED);
         }
 
-        task_yield();
+        task_sleep(1);
     }
 }
 

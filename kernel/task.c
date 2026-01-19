@@ -1,5 +1,6 @@
 #include "task.h"
 #include "heap.h"
+#include "interrupts.h"
 
 #define MAX_TASKS 4
 
@@ -90,10 +91,25 @@ int task_create(task_fn fn, void* arg, size_t stack_size)
     t->fn = fn;
     t->arg = arg;
     t->alive = true;
+    t->state = TASK_RUNNABLE;
+    t->wake_tick = 0;
+
     // 스택 기본 구조 생성
     t->esp = build_initial_stack(t->stack, t->stack_size);
 
     return g_count++;
+}
+
+// wake tick에 도달하였으면 태스크를 깨우는 함수
+static void task_update_wakeup(Task* t)
+{
+    if (t->alive && t->state == TASK_SLEEPING)
+    {
+        if (g_timer_ticks >= t->wake_tick)
+        {
+            t->state = TASK_RUNNABLE;
+        }
+    }
 }
 
 // 다음에 실행할 alive 상태의 태스크 탐색 (Round-Robin 방식)
@@ -105,7 +121,11 @@ static int pick_next(int from)
     for (int i = 1; i <= g_count; ++i)
     {
         int idx = (from + i) % g_count;
-        if (g_tasks[idx].alive)
+
+        Task* t = &g_tasks[idx];
+        task_update_wakeup(t);
+
+        if (t->alive && t->state == TASK_RUNNABLE)
         {
             return idx;
         }
@@ -147,6 +167,30 @@ void task_yield(void)
 
     // 해당 태스크로 컨텍스트 스위칭
     task_switch(&g_tasks[prev].esp, g_tasks[g_current].esp);
+}
+
+// 태스크 슬립 함수
+void task_sleep(uint32_t ticks)
+{
+    if (ticks == 0)
+    {
+        task_yield();
+        return;
+    }
+
+    if (g_current < 0 || g_current >= g_count)
+    {
+        return;
+    }
+
+    Task* t = &g_tasks[g_current];
+
+    __asm__ volatile("cli");
+    t->state = TASK_SLEEPING;
+    t->wake_tick = g_timer_ticks + ticks;
+    __asm__ volatile("sti");
+
+    task_yield();
 }
 
 // 태스크 종료 함수

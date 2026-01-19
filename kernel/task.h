@@ -6,6 +6,12 @@
 // 인자가 없고 반환형이 void인 함수 포인터 타입의 별칭 정의
 typedef void (*task_fn)(void*);
 
+// 태스크 상태를 나타내는 enum 정의
+typedef enum {
+    TASK_RUNNABLE = 0,
+    TASK_SLEEPING = 1,
+} TaskState;
+
 // Task 구조체 정의
 typedef struct Task {
     uint32_t* esp;          // 저장된 스택 포인터
@@ -14,6 +20,8 @@ typedef struct Task {
     task_fn fn;             // 태스크 시작 시점에서 실행될 함수 포인터
     void* arg;              // 해당 함수에 넘겨줄 인자
     bool alive;             // 태스크 실행 대상 여부
+    TaskState state;        // 태스크 상태
+    uint32_t wake_tick;     // 태스크를 Runnable 상태로 전환하는 tick
 } Task;
 
 // 태스크 테이블 초기화 함수
@@ -25,5 +33,7 @@ int task_create(task_fn fn, void* arg, size_t stack_size);
 void task_start(void);
 // 태스크가 CPU 점유를 양보하는 함수 (협력 스케줄링)
 void task_yield(void);
+// 태스크 슬립 함수
+void task_sleep(uint32_t ticks);
 // 태스크 종료 함수
 __attribute__((noreturn)) void task_exit(void);
