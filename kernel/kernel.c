@@ -68,10 +68,6 @@ static void app_task(void* arg)
 
     for (;;) {
         if (g_testwin) {
-            gx += gvx;
-            if (gx < 4) { gx = 4; gvx = 1; }
-            if (gx > g_testwin->width - 12) { gx = g_testwin->width - 12; gvx = -1; }
-
             window_put_char(g_testwin, '.', COLOR_RED);
         }
 
