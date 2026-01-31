@@ -20,7 +20,9 @@ static Window* g_testwin = 0;
 static void idle_task(void* arg)
 {
     (void)arg;
-    for (;;) {
+
+    for (;;)
+    {
         asm volatile("sti; hlt");   // 인터럽트로만 깨어남
         task_yield();               // 깨어나면 다른 태스크에게 CPU 양보
     }
@@ -33,9 +35,11 @@ static void ui_task(void* arg)
 
     uint32_t last_tick = g_timer_ticks;
 
-    for (;;) {
+    for (;;)
+    {
         // 프레임 경계 대기
-        while (g_timer_ticks == last_tick) {
+        while (g_timer_ticks == last_tick)
+        {
             task_sleep(1);
             continue;
         }
@@ -43,11 +47,17 @@ static void ui_task(void* arg)
 
         // 이벤트 처리
         Event ev;
-        while (event_pop(&ev)) {
-            if (ev.type == EV_MOUSE_MOVE) {
+        while (event_pop(&ev))
+        {
+            if (ev.type == EV_MOUSE_MOVE)
+            {
                 cursor_set_pos(ev.mouse_move.x, ev.mouse_move.y);
-            } else if (ev.type == EV_KEY) {
-                if (ev.key.pressed && ev.key.ascii && g_testwin) {
+            }
+            
+            else if (ev.type == EV_KEY)
+            {
+                if (ev.key.pressed && ev.key.ascii && g_testwin)
+                {
                     window_put_char(g_testwin, ev.key.ascii, COLOR_BLACK);
                 }
             }
@@ -58,21 +68,57 @@ static void ui_task(void* arg)
     }
 }
 
-static int gx = 10;
-static int gvx = 1;
-
 // 앱 작업을 위한 태스크
 static void app_task(void* arg)
 {
     (void)arg;
 
-    for (;;) {
-        if (g_testwin) {
-            window_put_char(g_testwin, '.', COLOR_RED);
-        }
-
+    // 윈도우 준비
+    while (!g_testwin)
+    {
         task_sleep(1);
     }
+    
+    // 테스트 시작 텍스트 출력
+    window_put_string(g_testwin, "[HEAP] test start\n", COLOR_BROWN);
+    
+    // kmalloc 1회 수행 (64바이트 payload)
+    void* p = kmalloc(64);
+
+    // kmalloc 실패
+    if (!p)
+    {
+        window_put_string(g_testwin, "[FAIL] kmalloc(64)\n", COLOR_LIGHT_RED);
+        for (;;)
+        {
+            task_sleep(100);
+        }
+    }
+
+    // kmalloc 성공
+    window_put_string(g_testwin, "[PASS] kmalloc(64)\n", COLOR_LIGHT_GREEN);
+
+    // kfree 1회 수행
+    if (!kfree(p))
+    {
+        // kfree 성공
+        window_put_string(g_testwin, "[FAIL] kfree(ptr)\n", COLOR_LIGHT_RED);
+        
+        for (;;)
+        {
+            task_sleep(100);
+        }
+    }
+
+    // kfree 실패
+    else
+    {
+        window_put_string(g_testwin, "[PASS] kfree(ptr)\n", COLOR_LIGHT_GREEN);
+    }
+
+    window_put_string(g_testwin, "[HEAP] test done\n", COLOR_BROWN);
+
+    for (;;) task_sleep(100);
 }
 
 void kernel_main(void)
@@ -104,10 +150,7 @@ void kernel_main(void)
     wm_init();
 
     // 테스트용 window 생성
-    wm_create_window(8, 8, 200, 160, COLOR_WHITE, COLOR_BLUE, "Window A");
-
-    // 테스트용 window 생성
-    g_testwin = wm_create_window(50, 50, 200, 140, COLOR_WHITE, COLOR_BLUE, "Window B");
+    g_testwin = wm_create_window(50, 50, 200, 140, COLOR_WHITE, COLOR_BLUE, "TEST");
 
     int mx = get_mouse_x();
     int my = get_mouse_y();

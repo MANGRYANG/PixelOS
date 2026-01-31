@@ -82,7 +82,7 @@ int task_create(task_fn fn, void* arg, size_t stack_size)
     // 새 태스크 생성 후 태스크 테이블에 등록
     Task* t = &g_tasks[g_count];
     // 스택 크기 만큼의 공간을 kmalloc하여 스택 바닥 주소를 보관
-    t->stack = (uint8_t*)kmalloc_aligned(stack_size, 16);
+    t->stack = (uint8_t*)kmalloc(stack_size);
     // 할당 실패 시 태스크 생성 실패
     if (!t->stack) { return -1; }
 
