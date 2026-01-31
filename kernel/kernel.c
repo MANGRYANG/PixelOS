@@ -118,7 +118,11 @@ static void app_task(void* arg)
 
     window_put_string(g_testwin, "[HEAP] test done\n", COLOR_BROWN);
 
-    for (;;) task_sleep(100);
+    for (;;)
+    {
+        task_sleep(100);
+
+    }
 }
 
 void kernel_main(void)
