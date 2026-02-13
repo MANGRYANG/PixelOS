@@ -1,3 +1,5 @@
+// 주의: 커서 레이어는 반드시 하나만 추가할 것!!!
+
 #include "layer_manager.h"
 
 // 최대 레이어 개수 설정
@@ -18,10 +20,10 @@ static void layer_rebase_z(void)
     int count;
     Layer** list = layer_get_all(&count);
 
-    for (int i = 0; i < count; ++i)
+    for (int i = 0; i < count - 1; ++i)
         list[i]->z = i + 1;
 
-    g_layer_top_z = count;
+    g_layer_top_z = count - 1;
 }
 
 // z-index 할당 함수
@@ -66,7 +68,12 @@ bool layer_add(Layer* layer)
     // 최대 레이어 개수를 넘는 레이어는 생성 불가
     if (layer_count >= MAX_LAYERS) { return false; }
 
-    layer->z = allocate_z();
+    // 추가되는 레이어가 커서 레이어가 아닌 경우
+    if (layer->type != LAYER_CURSOR)
+    {
+        layer->z = allocate_z();
+    }
+    
     layers[layer_count++] = layer;
 
     return true;

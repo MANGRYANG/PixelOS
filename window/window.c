@@ -8,6 +8,9 @@
 // 최대로 허용되는 window 개수
 #define MAX_WINDOWS 4
 
+// 타이틀 바 높이
+#define TITLE_HEIGHT (FONT_HEIGHT + 2)
+
 // window가 가질 수 있는 최대 너비 및 높이
 #define MAX_W 320
 #define MAX_H 200
@@ -58,7 +61,7 @@ static void window_draw_frame(Window* w)
     }
 
     // 제목 바
-    int title_h = FONT_HEIGHT + 2;
+    int title_h = TITLE_HEIGHT;
     for (int y = 1; y <= title_h; y++)
         for (int x = 1; x < w->width - 1; x++)
             win_putpixel(w, x, y, w->border_color);
@@ -282,4 +285,63 @@ void wm_bring_to_front(Window* win)
     }
 
     layer_bring_to_front(&win->layer);
+}
+
+// 주어진 위치에 겹쳐 있는 창들 중 최상단에 위치한 창을 반환하는 함수
+Window* wm_topmost_window(int x, int y)
+{
+    // 최상단 창 초기화
+    Window* top = 0;
+    int top_z = -2147483647;
+
+    // 전체 창 순회
+    for (int i = 0; i < MAX_WINDOWS; ++i)
+    {
+        Window* w = &g_windows[i];
+
+        // 창이 사용 중이 아니거나 비가시 상태인 경우 무시
+        if (!w->in_use) continue;
+        if (!w->layer.visible) continue;
+
+        // 주어진 위치가 창의 범위를 벗어나는 경우 무시
+        if ((x < w->px) || (x >= (w->px + w->width))) continue;
+        if ((y < w->py) || (y >= (w->py + w->height))) continue;
+
+        // 최상단 창 정보 업데이트
+        if (w->layer.z > top_z)
+        {
+            top_z = w->layer.z;
+            top = w;
+        }
+    }
+
+    return top;
+}
+
+// 주어진 위치가 타이틀 바 영역인지 체크하는 함수
+bool wm_is_on_titlebar(Window* w, int x, int y)
+{
+    // 창 유효성 검사
+    if (!w || !w->in_use) return false;
+
+    // 테두리 1px 고려하여 타이틀 바 영역인지 체크
+    if ((x < w->px) || (x >= (w->px + w->width))) return false;
+    if ((y < w->py + 1) || (y > (w->py + TITLE_HEIGHT))) return false;
+
+    return true;
+}
+
+// 창 위치 이동 함수
+void wm_move_window(Window* w, int new_px, int new_py)
+{
+    // 창 유효성 검사
+    if (!w || !w->in_use) return;
+
+    // 창 위치 갱신
+    w->px = new_px;
+    w->py = new_py;
+
+    // 레이어 위치도 동기화
+    w->layer.x = new_px;
+    w->layer.y = new_py;
 }

@@ -16,6 +16,16 @@
 
 static Window* g_testwin = 0;
 
+// 드래그를 통해 이동할 윈도우
+static Window* g_dragwin = 0;
+
+// 마우스로 클릭한 부분과 창의 좌상단의 오프셋
+static int g_drag_off_x = 0;
+static int g_drag_off_y = 0;
+
+// 창이 드래그 상태인지 나타내는 변수
+static int g_dragging = 0;
+
 // 유휴 상태를 위한 태스크
 static void idle_task(void* arg)
 {
@@ -49,16 +59,89 @@ static void ui_task(void* arg)
         Event ev;
         while (event_pop(&ev))
         {
-            if (ev.type == EV_MOUSE_MOVE)
+            switch (ev.type)
             {
-                cursor_set_pos(ev.mouse_move.x, ev.mouse_move.y);
-            }
-            
-            else if (ev.type == EV_KEY)
-            {
-                if (ev.key.pressed && ev.key.ascii && g_testwin)
+                case EV_MOUSE_MOVE:
                 {
-                    window_put_char(g_testwin, ev.key.ascii, COLOR_BLACK);
+                    int mx = ev.mouse_move.x;
+                    int my = ev.mouse_move.y;
+
+                    cursor_set_pos(mx, my);
+
+                    // 드래그 상태이고 대상 창이 존재하는 경우
+                    if (g_dragging && g_dragwin)
+                    {
+                        // 갱신할 좌표 계산
+                        int new_x = mx - g_drag_off_x;
+                        int new_y = my - g_drag_off_y;
+
+                        // 클램프
+                        if (new_x < 0) new_x = 0;
+                        if (new_y < 0) new_y = 0;
+                        if (new_x > WIDTH  - g_dragwin->width)  new_x = WIDTH  - g_dragwin->width;
+                        if (new_y > HEIGHT - g_dragwin->height) new_y = HEIGHT - g_dragwin->height;
+
+                        wm_move_window(g_dragwin, new_x, new_y);
+                    }
+
+                    break;
+                }
+
+                case EV_MOUSE_BUTTON:
+                {
+                    // 프레스 및 버튼 상태 가져오기
+                    int pressed = ev.mouse_button.pressed;
+                    int button  = ev.mouse_button.button;
+
+                    // 마우스 위치
+                    int mx = ev.mouse_button.x;
+                    int my = ev.mouse_button.y;
+
+                    // 왼쪽 버튼을 누르는 경우
+                    if (button == MOUSE_LEFT && pressed)
+                    {
+                        // 마우스 위치에서의 최상단 윈도우 가져오기
+                        Window* w = wm_topmost_window(mx, my);
+
+                        // 윈도우가 존재하고 타이틀바 위에 있는 경우
+                        if (w && wm_is_on_titlebar(w, mx, my))
+                        {
+                            // 드래그 대상 윈도우 설정
+                            g_dragwin = w;
+                            g_dragging = 1;
+                            g_drag_off_x = mx - w->px;
+                            g_drag_off_y = my - w->py;
+                            
+                            // 해당 윈도우를 최상단으로 이동
+                            wm_bring_to_front(w);
+                        }
+
+                    }
+                    
+                    // 왼쪽 버튼을 떼는 경우
+                    else if (button == MOUSE_LEFT && !pressed)
+                    {
+                        // 드래그 종료
+                        g_dragging = 0;
+                        g_dragwin = 0;
+                    }
+
+                    break;
+                }
+
+                case EV_KEY:
+                {
+                    if (ev.key.pressed && ev.key.ascii && g_testwin)
+                    {
+                        window_put_char(g_testwin, ev.key.ascii, COLOR_BLACK);
+                    }
+
+                    break;
+                }
+
+                default:
+                {
+                    break;
                 }
             }
         }

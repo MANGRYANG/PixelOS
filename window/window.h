@@ -57,3 +57,12 @@ void window_put_string(Window* win, const char* s, uint8_t color);
 
 // window를 최상위 레이어로 이동시키는 함수
 void wm_bring_to_front(Window* win);
+
+// 주어진 위치에 겹쳐 있는 창들 중 최상단에 위치한 창을 반환하는 함수
+Window* wm_topmost_window(int x, int y);
+
+// 주어진 위치가 타이틀 바 영역인지 체크하는 함수
+bool wm_is_on_titlebar(Window* w, int x, int y);
+
+// 창 위치 이동 함수
+void wm_move_window(Window* w, int new_px, int new_py);
