@@ -66,3 +66,12 @@ bool wm_is_on_titlebar(Window* w, int x, int y);
 
 // 창 위치 이동 함수
 void wm_move_window(Window* w, int new_px, int new_py);
+
+// 주어진 창을 활성 창으로 승격
+Window* wm_focus(Window* w);
+
+// 주어진 위치의 창을 활성 창으로 승격
+Window* wm_focus_at(int x, int y);
+
+// 현재 활성 창에 키 입력 전달
+void wm_send_key(uint8_t ascii, int pressed);

@@ -21,6 +21,9 @@ static Window g_windows[MAX_WINDOWS];
 // 윈도우 버퍼
 static uint8_t g_window_buffers[MAX_WINDOWS][MAX_W * MAX_H];
 
+// 활성 상태인 창
+static Window* g_active_win = 0;
+
 // window manager 초기화
 void wm_init(void)
 {
@@ -46,16 +49,22 @@ static void window_draw_frame(Window* w)
 {
     // 배경
     for (int y = 0; y < w->height; y++)
+    {
         for (int x = 0; x < w->width; x++)
+        {
             w->buffer[y * w->stride + x] = w->bg_color;
+        }
+    }
 
     // 테두리
-    for (int x = 0; x < w->width; x++) {
+    for (int x = 0; x < w->width; x++)
+    {
         win_putpixel(w, x, 0, w->border_color);
         win_putpixel(w, x, w->height - 1, w->border_color);
     }
 
-    for (int y = 0; y < w->height; y++) {
+    for (int y = 0; y < w->height; y++)
+    {
         win_putpixel(w, 0, y, w->border_color);
         win_putpixel(w, w->width - 1, y, w->border_color);
     }
@@ -63,14 +72,51 @@ static void window_draw_frame(Window* w)
     // 제목 바
     int title_h = TITLE_HEIGHT;
     for (int y = 1; y <= title_h; y++)
+    {
         for (int x = 1; x < w->width - 1; x++)
+        {
             win_putpixel(w, x, y, w->border_color);
-
-    // 제목 텍스트
-    if (w->title) {
-        window_draw_string(w, 4, 2, w->title, COLOR_WHITE);
+        }
     }
 
+    // 제목 텍스트
+    if (w->title)
+    {
+        window_draw_string(w, 4, 2, w->title, COLOR_WHITE);
+    }
+}
+
+// 윈도우 백 버퍼에 테두리 프레임만 그리는 함수
+static void window_draw_border(Window* w)
+{
+    // 테두리
+    for (int x = 0; x < w->width; x++)
+    {
+        win_putpixel(w, x, 0, w->border_color);
+        win_putpixel(w, x, w->height - 1, w->border_color);
+    }
+
+    for (int y = 0; y < w->height; y++)
+    {
+        win_putpixel(w, 0, y, w->border_color);
+        win_putpixel(w, w->width - 1, y, w->border_color);
+    }
+
+    // 제목 바
+    int title_h = TITLE_HEIGHT;
+    for (int y = 1; y <= title_h; y++)
+    {
+        for (int x = 1; x < w->width - 1; x++)
+        {
+            win_putpixel(w, x, y, w->border_color);
+        }
+    }
+
+    // 제목 텍스트
+    if (w->title)
+    {
+        window_draw_string(w, 4, 2, w->title, COLOR_WHITE);
+    }
 }
 
 // 새 window 생성
@@ -132,6 +178,9 @@ Window* wm_create_window(int px, int py, int width, int height, uint8_t bg_color
                 win-> buffer = 0;
                 return 0;
             }
+
+            // 활성 창으로 설정
+            wm_focus(win);
 
             // 프레임 초기 렌더링
             window_draw_frame(win);
@@ -344,4 +393,47 @@ void wm_move_window(Window* w, int new_px, int new_py)
     // 레이어 위치도 동기화
     w->layer.x = new_px;
     w->layer.y = new_py;
+}
+
+// 주어진 창을 활성 창으로 승격
+Window* wm_focus(Window* w)
+{
+    // 창 유효성 검사
+    if (!w) return 0;
+
+    // 기존에 활성 창이 존재하고 사용 중일 때
+    if (g_active_win && g_active_win->in_use)
+    {
+        // 활성 창 테두리 색 변경 (어두운 회색)
+        g_active_win->border_color = COLOR_DARK_GRAY;
+        window_draw_border(g_active_win);
+    }
+
+    // 활성 창 전환
+    g_active_win = w;
+
+    // 활성 창 테두리 색 변경 (파란색)
+    g_active_win->border_color = COLOR_BLUE;
+    window_draw_border(g_active_win);
+
+    // 가장 위 레이어로 이동
+    wm_bring_to_front(w);
+
+    return w;
+}
+
+// 주어진 위치의 창을 활성 창으로 승격
+Window* wm_focus_at(int x, int y)
+{
+    return wm_focus(wm_topmost_window(x, y));
+}
+
+// 현재 활성 창에 키 입력 전달
+void wm_send_key(uint8_t ascii, int pressed)
+{
+    if (!ascii || !pressed) return;
+
+    if (!g_active_win || !g_active_win->in_use) return;
+
+    window_put_char(g_active_win, (char)ascii, COLOR_BLACK);
 }

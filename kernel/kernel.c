@@ -78,7 +78,7 @@ static void ui_task(void* arg)
                         // 클램프
                         if (new_x < 0) new_x = 0;
                         if (new_y < 0) new_y = 0;
-                        if (new_x > WIDTH  - g_dragwin->width)  new_x = WIDTH  - g_dragwin->width;
+                        if (new_x > WIDTH - g_dragwin->width) new_x = WIDTH - g_dragwin->width;
                         if (new_y > HEIGHT - g_dragwin->height) new_y = HEIGHT - g_dragwin->height;
 
                         wm_move_window(g_dragwin, new_x, new_y);
@@ -100,8 +100,8 @@ static void ui_task(void* arg)
                     // 왼쪽 버튼을 누르는 경우
                     if (button == MOUSE_LEFT && pressed)
                     {
-                        // 마우스 위치에서의 최상단 윈도우 가져오기
-                        Window* w = wm_topmost_window(mx, my);
+                        // 마우스 위치에서의 최상단 윈도우 가져오기 + 활성 창 등록
+                        Window* w = wm_focus_at(mx, my);
 
                         // 윈도우가 존재하고 타이틀바 위에 있는 경우
                         if (w && wm_is_on_titlebar(w, mx, my))
@@ -131,11 +131,7 @@ static void ui_task(void* arg)
 
                 case EV_KEY:
                 {
-                    if (ev.key.pressed && ev.key.ascii && g_testwin)
-                    {
-                        window_put_char(g_testwin, ev.key.ascii, COLOR_BLACK);
-                    }
-
+                    wm_send_key((uint8_t)ev.key.ascii, ev.key.pressed);
                     break;
                 }
 
@@ -204,7 +200,6 @@ static void app_task(void* arg)
     for (;;)
     {
         task_sleep(100);
-
     }
 }
 
@@ -238,6 +233,8 @@ void kernel_main(void)
 
     // 테스트용 window 생성
     g_testwin = wm_create_window(50, 50, 200, 140, COLOR_WHITE, COLOR_BLUE, "TEST");
+
+    wm_create_window(150, 70, 200, 140, COLOR_WHITE, COLOR_BLUE, "HIT");
 
     int mx = get_mouse_x();
     int my = get_mouse_y();
