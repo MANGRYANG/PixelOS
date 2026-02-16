@@ -1,6 +1,6 @@
 #include "task.h"
-#include "heap.h"
 #include "interrupts.h"
+#include "../memory/heap.h"
 
 #define MAX_TASKS 4
 

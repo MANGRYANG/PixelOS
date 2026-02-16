@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "../font/font.h"
-#include "../kernel/heap.h"
 #include "../kernel/interrupts.h"
 #include "../kernel/task.h"
 #include "../kernel/event_queue.h"
@@ -13,6 +12,8 @@
 #include "../graphics/color.h"
 #include "../graphics/compositor.h"
 #include "../window/window.h"
+#include "../memory/heap.h"
+#include "../memory/paging.h"
 
 static Window* g_testwin = 0;
 
@@ -207,6 +208,9 @@ void kernel_main(void)
 {   
     // 힙 초기화
     heap_init();
+
+    // 페이징 자료구조 초기화
+    paging_init();
 
     // 화면 초기화
     gfx_clear(COLOR_LIGHT_GRAY);
