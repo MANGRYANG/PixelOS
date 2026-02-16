@@ -23,4 +23,6 @@ SECTIONS {              # kernel.bin의 메모리 배치 규칙 정의
         *(COMMON)       # 모든 COMMON 심볼들을 bss 블록에 배치
         *(.bss*)        # 초기값이 없는 전역 및 정적 변수를 하나로 묶어 배치
     }
+
+    _kernel_end = .;    # 링커가 계산하는 커널 끝 주소
 }

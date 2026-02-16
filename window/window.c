@@ -8,6 +8,9 @@
 // 최대로 허용되는 window 개수
 #define MAX_WINDOWS 4
 
+// 타이틀 바 높이
+#define TITLE_HEIGHT (FONT_HEIGHT + 2)
+
 // window가 가질 수 있는 최대 너비 및 높이
 #define MAX_W 320
 #define MAX_H 200
@@ -17,6 +20,9 @@ static Window g_windows[MAX_WINDOWS];
 
 // 윈도우 버퍼
 static uint8_t g_window_buffers[MAX_WINDOWS][MAX_W * MAX_H];
+
+// 활성 상태인 창
+static Window* g_active_win = 0;
 
 // window manager 초기화
 void wm_init(void)
@@ -43,31 +49,74 @@ static void window_draw_frame(Window* w)
 {
     // 배경
     for (int y = 0; y < w->height; y++)
+    {
         for (int x = 0; x < w->width; x++)
+        {
             w->buffer[y * w->stride + x] = w->bg_color;
+        }
+    }
 
     // 테두리
-    for (int x = 0; x < w->width; x++) {
+    for (int x = 0; x < w->width; x++)
+    {
         win_putpixel(w, x, 0, w->border_color);
         win_putpixel(w, x, w->height - 1, w->border_color);
     }
 
-    for (int y = 0; y < w->height; y++) {
+    for (int y = 0; y < w->height; y++)
+    {
         win_putpixel(w, 0, y, w->border_color);
         win_putpixel(w, w->width - 1, y, w->border_color);
     }
 
     // 제목 바
-    int title_h = FONT_HEIGHT + 2;
+    int title_h = TITLE_HEIGHT;
     for (int y = 1; y <= title_h; y++)
+    {
         for (int x = 1; x < w->width - 1; x++)
+        {
             win_putpixel(w, x, y, w->border_color);
-
-    // 제목 텍스트
-    if (w->title) {
-        window_draw_string(w, 4, 2, w->title, COLOR_WHITE);
+        }
     }
 
+    // 제목 텍스트
+    if (w->title)
+    {
+        window_draw_string(w, 4, 2, w->title, COLOR_WHITE);
+    }
+}
+
+// 윈도우 백 버퍼에 테두리 프레임만 그리는 함수
+static void window_draw_border(Window* w)
+{
+    // 테두리
+    for (int x = 0; x < w->width; x++)
+    {
+        win_putpixel(w, x, 0, w->border_color);
+        win_putpixel(w, x, w->height - 1, w->border_color);
+    }
+
+    for (int y = 0; y < w->height; y++)
+    {
+        win_putpixel(w, 0, y, w->border_color);
+        win_putpixel(w, w->width - 1, y, w->border_color);
+    }
+
+    // 제목 바
+    int title_h = TITLE_HEIGHT;
+    for (int y = 1; y <= title_h; y++)
+    {
+        for (int x = 1; x < w->width - 1; x++)
+        {
+            win_putpixel(w, x, y, w->border_color);
+        }
+    }
+
+    // 제목 텍스트
+    if (w->title)
+    {
+        window_draw_string(w, 4, 2, w->title, COLOR_WHITE);
+    }
 }
 
 // 새 window 생성
@@ -129,6 +178,9 @@ Window* wm_create_window(int px, int py, int width, int height, uint8_t bg_color
                 win-> buffer = 0;
                 return 0;
             }
+
+            // 활성 창으로 설정
+            wm_focus(win);
 
             // 프레임 초기 렌더링
             window_draw_frame(win);
@@ -282,4 +334,106 @@ void wm_bring_to_front(Window* win)
     }
 
     layer_bring_to_front(&win->layer);
+}
+
+// 주어진 위치에 겹쳐 있는 창들 중 최상단에 위치한 창을 반환하는 함수
+Window* wm_topmost_window(int x, int y)
+{
+    // 최상단 창 초기화
+    Window* top = 0;
+    int top_z = -2147483647;
+
+    // 전체 창 순회
+    for (int i = 0; i < MAX_WINDOWS; ++i)
+    {
+        Window* w = &g_windows[i];
+
+        // 창이 사용 중이 아니거나 비가시 상태인 경우 무시
+        if (!w->in_use) continue;
+        if (!w->layer.visible) continue;
+
+        // 주어진 위치가 창의 범위를 벗어나는 경우 무시
+        if ((x < w->px) || (x >= (w->px + w->width))) continue;
+        if ((y < w->py) || (y >= (w->py + w->height))) continue;
+
+        // 최상단 창 정보 업데이트
+        if (w->layer.z > top_z)
+        {
+            top_z = w->layer.z;
+            top = w;
+        }
+    }
+
+    return top;
+}
+
+// 주어진 위치가 타이틀 바 영역인지 체크하는 함수
+bool wm_is_on_titlebar(Window* w, int x, int y)
+{
+    // 창 유효성 검사
+    if (!w || !w->in_use) return false;
+
+    // 테두리 1px 고려하여 타이틀 바 영역인지 체크
+    if ((x < w->px) || (x >= (w->px + w->width))) return false;
+    if ((y < w->py + 1) || (y > (w->py + TITLE_HEIGHT))) return false;
+
+    return true;
+}
+
+// 창 위치 이동 함수
+void wm_move_window(Window* w, int new_px, int new_py)
+{
+    // 창 유효성 검사
+    if (!w || !w->in_use) return;
+
+    // 창 위치 갱신
+    w->px = new_px;
+    w->py = new_py;
+
+    // 레이어 위치도 동기화
+    w->layer.x = new_px;
+    w->layer.y = new_py;
+}
+
+// 주어진 창을 활성 창으로 승격
+Window* wm_focus(Window* w)
+{
+    // 창 유효성 검사
+    if (!w) return 0;
+
+    // 기존에 활성 창이 존재하고 사용 중일 때
+    if (g_active_win && g_active_win->in_use)
+    {
+        // 활성 창 테두리 색 변경 (어두운 회색)
+        g_active_win->border_color = COLOR_DARK_GRAY;
+        window_draw_border(g_active_win);
+    }
+
+    // 활성 창 전환
+    g_active_win = w;
+
+    // 활성 창 테두리 색 변경 (파란색)
+    g_active_win->border_color = COLOR_BLUE;
+    window_draw_border(g_active_win);
+
+    // 가장 위 레이어로 이동
+    wm_bring_to_front(w);
+
+    return w;
+}
+
+// 주어진 위치의 창을 활성 창으로 승격
+Window* wm_focus_at(int x, int y)
+{
+    return wm_focus(wm_topmost_window(x, y));
+}
+
+// 현재 활성 창에 키 입력 전달
+void wm_send_key(uint8_t ascii, int pressed)
+{
+    if (!ascii || !pressed) return;
+
+    if (!g_active_win || !g_active_win->in_use) return;
+
+    window_put_char(g_active_win, (char)ascii, COLOR_BLACK);
 }

@@ -5,6 +5,7 @@
 
 #define CURSOR_W 8
 #define CURSOR_H 8
+#define CURSOR_Z 0x7FFFFFFF
 
 #define CURSOR_COLOR COLOR_LIGHT_MAGENTA
 
@@ -24,7 +25,7 @@ void cursor_init(int x, int y)
     cursor_layer.w = CURSOR_W;
     cursor_layer.h = CURSOR_H;
     cursor_layer.buffer = cursor_buffer;
-    cursor_layer.z = 100;   // 항상 최상위 레이어로 사용
+    cursor_layer.z = CURSOR_Z;   // 항상 최상위 레이어로 사용
     cursor_layer.type = LAYER_CURSOR;
     cursor_layer.visible = 1;
 

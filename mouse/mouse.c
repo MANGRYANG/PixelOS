@@ -1,5 +1,7 @@
 #include "mouse.h"
 #include "../kernel/io.h"
+#include "../kernel/event_queue.h"
+#include "../kernel/event.h"
 #include "../graphics/graphics.h"
 
 // 내부 마우스 상태
@@ -113,6 +115,9 @@ void mouse_on_packet(uint8_t p[3])
         return;
     }
 
+    // 이전 마우스 버튼 상태를 저장할 static 변수
+    static uint8_t prev_buttons = 0;
+
     mouse_x += dx;
     // PS/2 마우스 - y축 반대 방향으로 이동
     mouse_y -= dy;
@@ -128,6 +133,43 @@ void mouse_on_packet(uint8_t p[3])
     if (p[0] & 0x01) mouse_buttons |= MOUSE_LEFT;
     if (p[0] & 0x02) mouse_buttons |= MOUSE_RIGHT;
     if (p[0] & 0x04) mouse_buttons |= MOUSE_MIDDLE;
+
+    // 마우스 이동 이벤트
+    if (dx != 0 || dy != 0)
+    {
+        Event ev = {0};
+        ev.type = EV_MOUSE_MOVE;
+        ev.mouse_move.x = mouse_x;
+        ev.mouse_move.y = mouse_y;
+        ev.mouse_move.dx = dx;
+        ev.mouse_move.dy = dy;
+        event_push(&ev);
+    }
+
+    // 마우스 버튼 이벤트 (버튼 상태의 변화가 생긴 경우)
+    uint8_t changed = (uint8_t)(prev_buttons ^ mouse_buttons);
+
+    // 버튼 상태가 변한 경우
+    if (changed)
+    {
+        const uint8_t buttons[3] = { MOUSE_LEFT, MOUSE_RIGHT, MOUSE_MIDDLE };
+        for (int i = 0; i < 3; ++i)
+        {
+            uint8_t b = buttons[i];
+            if (changed & b)
+            {
+                Event ev = {0};
+                ev.type = EV_MOUSE_BUTTON;
+                ev.mouse_button.button = b;
+                ev.mouse_button.pressed = (mouse_buttons & b) ? 1 : 0;
+                ev.mouse_button.buttons = mouse_buttons;
+                ev.mouse_button.x = mouse_x;
+                ev.mouse_button.y = mouse_y;
+                event_push(&ev);
+            }
+        }
+    }
+    prev_buttons = mouse_buttons;
 }
 
 // Getter 함수
