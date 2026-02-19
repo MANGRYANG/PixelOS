@@ -4,10 +4,12 @@ global idt_load
 global timer_isr
 global keyboard_isr
 global mouse_isr
+global page_fault_isr
 
 extern mouse_handler
 extern keyboard_handler
 extern timer_handler
+extern page_fault_handler
 
 ;-----------------------------------------------------------------------------
 ; IDT 로드
@@ -56,5 +58,28 @@ mouse_isr:
     mov al, 0x20
     out 0xA0, al           ; 슬레이브 PIC EOI
     out 0x20, al           ; 마스터 PIC EOI
+
+    iretd
+
+;-----------------------------------------------------------------------------
+; 페이지 폴트 인터럽트 서비스 루틴
+;-----------------------------------------------------------------------------
+page_fault_isr:
+    pusha
+
+    ; 두 번째 인자(error_code) 가져오기
+    mov eax, [esp + 32]
+    push eax
+
+    ; 첫 번째 인자(fault_addr) 가져오기
+    mov eax, cr2
+    push eax
+
+    call page_fault_handler     ; page_fault_handler 호출
+    add esp, 8                  ; 인자 정리 (스택에서 8바이트 제거)
+
+    popa
+
+    add esp, 4                  ; CPU가 스택에 추가한 error_code 정리
 
     iretd

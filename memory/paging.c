@@ -26,6 +26,30 @@ static inline uint32_t pte_index(uint32_t v)
     return (v >> 12) & 0x3FFu;
 }
 
+// CR3 레지스터에 값을 쓰는 내부 헬퍼
+static inline void write_cr3(uint32_t value)
+{
+    // 내부 어셈블리 실행 및 삭제 금지 선언
+    __asm__ volatile ("mov %0, %%cr3" :: "r"(value) : "memory");
+}
+
+// CR0 레지스터 값을 읽어오는 내부 헬퍼
+static inline uint32_t read_cr0(void)
+{
+    uint32_t value;
+    // 내부 어셈블리 실행 및 삭제 금지 선언
+    __asm__ volatile ("mov %%cr0, %0" : "=r"(value));
+
+    return value;
+}
+
+// CR0 레지스터에 값을 쓰는 내부 헬퍼
+static inline void write_cr0(uint32_t value)
+{
+    // 내부 어셈블리 실행 및 삭제 금지 선언
+    __asm__ volatile ("mov %0, %%cr0" :: "r"(value) : "memory");
+}
+
 // 전역 페이지 디렉터리
 static uint32_t g_page_directory[PDE_COUNT] __attribute__((aligned(PAGE_SIZE)));
 
@@ -50,6 +74,26 @@ void paging_init(void)
 
     // PDE[0]에 Page Table 0의 주소 등록
     g_page_directory[0] = ((uint32_t)g_page_table_0) | P_P | P_RW;
+}
+
+// 페이징 활성화 함수 (CR3 로드 후 CR0.PE 및 CR0.PG 세팅)
+// 유효한 페이지 테이블 보장을 위해 paging_init() 선행 필요
+void paging_enable(void)
+{
+    // 페이지 디렉토리 주소를 CR3 레지스터에 전달
+    uint32_t pd_phys = paging_get_directory_phys();
+    write_cr3(pd_phys);
+
+    // CR0의 페이징 비트(PG) 및 보호 비트(PE) 설정
+    uint32_t cr0 = read_cr0();
+    cr0 |= 0x80000001u;
+    write_cr0(cr0);
+}
+
+// 현재 페이지 디렉토리 물리 주소를 반환하는 함수
+uint32_t paging_get_directory_phys(void)
+{
+    return (uint32_t)g_page_directory;
 }
 
 // 주어진 가상 주소의 페이지 테이블 포인터를 반환하는 내부 헬퍼
