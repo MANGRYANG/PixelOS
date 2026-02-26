@@ -17,6 +17,8 @@ MOUSE_DIR = mouse
 GRAPHICS_DIR = graphics
 WINDOW_DIR = window
 
+MEMORY_DIR = memory
+
 .PHONY: all run clean
 
 # make all 명령
@@ -36,11 +38,17 @@ $(BUILD_DIR)/kernel.o: $(KERNEL_DIR)/kernel.c
 	-c $(KERNEL_DIR)/kernel.c \
 	-o $(BUILD_DIR)/kernel.o
 
-$(BUILD_DIR)/heap.o: $(KERNEL_DIR)/heap.c
+$(BUILD_DIR)/heap.o: $(MEMORY_DIR)/heap.c
 	@echo "==> Compiling heap..."
 	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
-	-c $(KERNEL_DIR)/heap.c \
+	-c $(MEMORY_DIR)/heap.c \
 	-o $(BUILD_DIR)/heap.o
+
+$(BUILD_DIR)/paging.o: $(MEMORY_DIR)/paging.c
+	@echo "==> Compiling paging module..."
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	-c $(MEMORY_DIR)/paging.c \
+	-o $(BUILD_DIR)/paging.o
 
 $(BUILD_DIR)/font.o: $(FONT_DIR)/font.c
 	@echo "==> Compiling font..."
@@ -124,7 +132,8 @@ $(BUILD_DIR)/window.o: $(WINDOW_DIR)/window.c
 
 # 커널 링크
 $(BUILD_DIR)/kernel.bin: \
-    $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/heap.o \
+    $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
+	$(BUILD_DIR)/heap.o $(BUILD_DIR)/paging.o \
     $(BUILD_DIR)/font.o \
     $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o $(BUILD_DIR)/event_queue.o $(BUILD_DIR)/task.o $(BUILD_DIR)/task_switch.o \
 	$(BUILD_DIR)/timer.o \
@@ -132,7 +141,9 @@ $(BUILD_DIR)/kernel.bin: \
 	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o $(BUILD_DIR)/layer_manager.o $(BUILD_DIR)/compositor.o 
 	@echo "==> Linking kernel..."
 	$(LD) -m elf_i386 -T $(LINKER_DIR)/linker.ld \
-	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/heap.o $(BUILD_DIR)/task.o $(BUILD_DIR)/task_switch.o \
+	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
+	$(BUILD_DIR)/heap.o $(BUILD_DIR)/paging.o \
+	$(BUILD_DIR)/task.o $(BUILD_DIR)/task_switch.o \
 	$(BUILD_DIR)/timer.o \
 	$(BUILD_DIR)/font.o \
 	$(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o $(BUILD_DIR)/event_queue.o \

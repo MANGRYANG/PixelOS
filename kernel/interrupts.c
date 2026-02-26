@@ -2,6 +2,10 @@
 #include "interrupts.h"
 #include "../keyboard/keyboard.h"
 #include "../mouse/mouse.h"
+#include "../graphics/graphics.h"
+#include "../graphics/color.h"
+#include "../font/font.h"
+#include <stdint.h>
 
 // IDT 엔트리 구조체
 struct idt_entry
@@ -29,6 +33,7 @@ extern void idt_load(uint32_t idtp_addr);
 extern void timer_isr(void);
 extern void keyboard_isr(void);
 extern void mouse_isr(void);
+extern void page_fault_isr(void);
 
 // IDT 초기화를 위한 간단한 memset 함수(내부 함수)
 static void* memset(void *dest, uint8_t value, uint32_t size)
@@ -92,6 +97,10 @@ static void pic_remap(void)
 // 타이머 tick을 저장할 변수 선언
 volatile uint32_t g_timer_ticks = 0;
 
+// 페이지 폴트 디버깅용
+volatile uint32_t g_last_pf_addr = 0;
+volatile uint32_t g_last_pf_err = 0;
+
 // asm 코드에서 호출되는 타이머 핸들러 정의
 void timer_handler(void)
 {
@@ -115,6 +124,58 @@ void mouse_handler(void)
     uint8_t data = inb(0x60);
     // 마우스 드라이브에 데이터 전달
     mouse_on_data(data);
+}
+
+// 32비트 비부호 정수를 16진수 문자열로 변환하는 내부 헬퍼 (에러 코드 출력용)
+static void hex32_to_str(uint32_t v, char out[11])
+{
+    static const char* hex = "0123456789ABCDEF";
+    out[0] = '0';
+    out[1] = 'x';
+    for (int i = 0; i < 8; ++i)
+    {
+        uint32_t shift = (7 - i) * 4;
+        out[2 + i] = hex[(v >> shift) & 0xF];
+    }
+    out[10] = 0;
+}
+
+// asm 코드에서 호출되는 페이지 폴트 핸들러 정의
+void page_fault_handler(uint32_t fault_addr, uint32_t error_code)
+{
+    g_last_pf_addr = fault_addr;
+    g_last_pf_err = error_code;
+
+    // 실행 중단
+    __asm__ volatile ("cli");
+
+    // 화면 초기화(빨간색)
+    gfx_clear(COLOR_LIGHT_RED);
+
+    // 에러 화면 구성
+    put_string(8, 8,  "PAGE FAULT OUTBREAK!", COLOR_WHITE);
+    put_string(8, 28, "fault_addr =", COLOR_WHITE);
+    put_string(8, 48, "error_code =", COLOR_WHITE);
+
+    // 페이지 폴트가 발생한 주소, 에러 코드를 저장할 버퍼
+    char addr_buf[11];
+    char err_buf[11];
+
+    // 16진수 문자열로 변환
+    hex32_to_str(fault_addr, addr_buf);
+    hex32_to_str(error_code, err_buf);
+
+    // 페이지 폴트가 발생한 주소, 에러 코드 출력
+    put_string(120, 28, addr_buf, COLOR_WHITE);
+    put_string(120, 48, err_buf,  COLOR_WHITE);
+
+    // 백버퍼 내용을 실제 VGA로 반영
+    gfx_present();
+    
+    for (;;)
+    {
+        __asm__ volatile ("hlt");
+    }
 }
 
 // 인터럽트 초기화 함수
@@ -147,6 +208,12 @@ void interrupts_init(void)
     // 셀렉터(GDT 코드 세그먼트) 0x08
     // type_attributes 0x8E (DPL 0, 32비트 인터럽트 게이트)
     idt_set_gate(0x2C, (uint32_t)mouse_isr, 0x08, 0x8E);
+
+    // 페이지 폴트 인터럽트 설정 -> IDT 인덱스 0x0E에 매핑됨
+    // 페이지 폴트 발생 시 page_fault_isr 호출
+    // 셀렉터(GDT 코드 세그먼트) 0x08
+    // type_attributes 0x8E (DPL 0, 32비트 인터럽트 게이트)
+    idt_set_gate(0x0E, (uint32_t)page_fault_isr, 0x08, 0x8E);
 
     // IDT 로드
     idt_load((uint32_t)&idtp);

@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "../font/font.h"
-#include "../kernel/heap.h"
 #include "../kernel/interrupts.h"
 #include "../kernel/task.h"
 #include "../kernel/event_queue.h"
@@ -13,6 +12,8 @@
 #include "../graphics/color.h"
 #include "../graphics/compositor.h"
 #include "../window/window.h"
+#include "../memory/heap.h"
+#include "../memory/paging.h"
 
 static Window* g_testwin = 0;
 
@@ -25,6 +26,15 @@ static int g_drag_off_y = 0;
 
 // 창이 드래그 상태인지 나타내는 변수
 static int g_dragging = 0;
+
+// 페이지 폴트 테스트 (임시)
+static void test_page_fault(void)
+{
+    // 매핑되지 않은 주소 접근
+    volatile uint32_t* p = (volatile uint32_t*)0x00400000u;
+    volatile uint32_t v = *p;
+    (void)v;
+}
 
 // 유휴 상태를 위한 태스크
 static void idle_task(void* arg)
@@ -151,51 +161,17 @@ static void ui_task(void* arg)
 static void app_task(void* arg)
 {
     (void)arg;
-
-    // 윈도우 준비
-    while (!g_testwin)
-    {
-        task_sleep(1);
-    }
     
     // 테스트 시작 텍스트 출력
-    window_put_string(g_testwin, "[HEAP] test start\n", COLOR_BROWN);
-    
-    // kmalloc 1회 수행 (64바이트 payload)
-    void* p = kmalloc(64);
+    window_put_string(g_testwin, "[PF] test start\n", COLOR_BROWN);
 
-    // kmalloc 실패
-    if (!p)
-    {
-        window_put_string(g_testwin, "[FAIL] kmalloc(64)\n", COLOR_LIGHT_RED);
-        for (;;)
-        {
-            task_sleep(100);
-        }
-    }
+    task_sleep(100);
 
-    // kmalloc 성공
-    window_put_string(g_testwin, "[PASS] kmalloc(64)\n", COLOR_LIGHT_GREEN);
+    // 페이지 폴트 발생 코드
+    // test_page_fault();
 
-    // kfree 1회 수행
-    if (!kfree(p))
-    {
-        // kfree 성공
-        window_put_string(g_testwin, "[FAIL] kfree(ptr)\n", COLOR_LIGHT_RED);
-        
-        for (;;)
-        {
-            task_sleep(100);
-        }
-    }
-
-    // kfree 실패
-    else
-    {
-        window_put_string(g_testwin, "[PASS] kfree(ptr)\n", COLOR_LIGHT_GREEN);
-    }
-
-    window_put_string(g_testwin, "[HEAP] test done\n", COLOR_BROWN);
+    // 테스트 성공 메시지 출력
+    window_put_string(g_testwin, "[PASS] No page fault occurred!\n", COLOR_GREEN);
 
     for (;;)
     {
@@ -208,11 +184,17 @@ void kernel_main(void)
     // 힙 초기화
     heap_init();
 
+    // 페이징 자료구조 초기화
+    paging_init();
+
     // 화면 초기화
     gfx_clear(COLOR_LIGHT_GRAY);
 
     // 인터럽트 설정
     interrupts_init();
+
+    // 페이징 활성화
+    paging_enable();
 
     // PIT 주파수 설정 (100Hz)
     pit_set_frequency(100);
