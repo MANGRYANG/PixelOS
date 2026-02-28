@@ -14,6 +14,7 @@
 #include "../window/window.h"
 #include "../memory/heap.h"
 #include "../memory/paging.h"
+#include "../kernel/gdt.h"
 
 static Window* g_testwin = 0;
 
@@ -180,7 +181,10 @@ static void app_task(void* arg)
 }
 
 void kernel_main(void)
-{   
+{
+    // GDT 초기화
+    gdt_init();
+
     // 힙 초기화
     heap_init();
 
