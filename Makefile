@@ -140,6 +140,10 @@ $(BUILD_DIR)/gdt.o: $(KERNEL_DIR)/gdt.c
 	-c $(KERNEL_DIR)/gdt.c \
 	-o $(BUILD_DIR)/gdt.o
 
+$(BUILD_DIR)/user_mode.o: $(KERNEL_DIR)/user_mode.asm
+	@echo "==> Assembling user mode helper..."
+	$(ASM) $(KERNEL_DIR)/user_mode.asm -f elf32 -o $(BUILD_DIR)/user_mode.o
+
 # 커널 링크
 $(BUILD_DIR)/kernel.bin: \
     $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
@@ -149,7 +153,8 @@ $(BUILD_DIR)/kernel.bin: \
 	$(BUILD_DIR)/timer.o \
     $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/mouse.o $(BUILD_DIR)/cursor.o \
 	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o $(BUILD_DIR)/layer_manager.o $(BUILD_DIR)/compositor.o \
-	$(BUILD_DIR)/flush_gdt.o $(BUILD_DIR)/gdt.o
+	$(BUILD_DIR)/flush_gdt.o $(BUILD_DIR)/gdt.o \
+	$(BUILD_DIR)/user_mode.o
 	@echo "==> Linking kernel..."
 	$(LD) -m elf_i386 -T $(LINKER_DIR)/linker.ld \
 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o \
@@ -161,6 +166,7 @@ $(BUILD_DIR)/kernel.bin: \
 	$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/mouse.o $(BUILD_DIR)/cursor.o \
 	$(BUILD_DIR)/graphics.o $(BUILD_DIR)/window.o $(BUILD_DIR)/layer_manager.o $(BUILD_DIR)/compositor.o \
 	$(BUILD_DIR)/flush_gdt.o $(BUILD_DIR)/gdt.o \
+	$(BUILD_DIR)/user_mode.o \
 	-o $(BUILD_DIR)/kernel.elf
 	objcopy -O binary $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel.bin
 

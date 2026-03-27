@@ -20,6 +20,10 @@
 extern uint8_t __user_text_start;
 extern uint8_t __user_text_end;
 
+// 유저 모드 진입 함수
+extern void jump_usermode(uint32_t user_eip, uint32_t user_esp);
+extern void usermode_entry(void);
+
 static Window* g_testwin = 0;
 
 // 드래그를 통해 이동할 윈도우
@@ -268,6 +272,16 @@ void kernel_main(void)
         {
             __asm__ volatile ("hlt");
         }
+    }
+
+    window_put_string(g_testwin, "[RING3] jump to user mode...\n", COLOR_BROWN);
+    compositor_compose();
+
+    jump_usermode((uint32_t)usermode_entry, (uint32_t)(g_user_test_stack + 4096));
+
+    for (;;)
+    {
+        __asm__ volatile ("hlt");
     }
 
     task_init();
