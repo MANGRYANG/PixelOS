@@ -31,5 +31,8 @@ uint32_t paging_get_directory_phys(void);
 int map_page(uint32_t virt, uint32_t phys, uint32_t flags);
 int unmap_page(uint32_t virt);
 
+// 이미 매핑된 페이지 범위에 플래그를 부여하는 함수
+int paging_set_range_flags(uint32_t virt, uint32_t size, uint32_t flags);
+
 // 가상 주소를 물리 주소로 변환하는 함수
 uint32_t virt_to_phys(uint32_t virt);
