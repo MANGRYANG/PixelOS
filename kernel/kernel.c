@@ -195,10 +195,7 @@ static void app_task(void* arg)
 __attribute__((section(".usertext"), noreturn))
 void user_test_main(void)
 {
-    for (;;)
-    {
-        __asm__ volatile ("hlt");
-    }
+    for (;;) { }
 }
 
 void kernel_main(void)

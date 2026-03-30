@@ -34,25 +34,25 @@ $(BUILD_DIR)/kernel_entry.o: $(KERNEL_DIR)/kernel_entry.asm
 
 $(BUILD_DIR)/kernel.o: $(KERNEL_DIR)/kernel.c
 	@echo "==> Compiling kernel..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(KERNEL_DIR)/kernel.c \
 	-o $(BUILD_DIR)/kernel.o
 
 $(BUILD_DIR)/heap.o: $(MEMORY_DIR)/heap.c
 	@echo "==> Compiling heap..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(MEMORY_DIR)/heap.c \
 	-o $(BUILD_DIR)/heap.o
 
 $(BUILD_DIR)/paging.o: $(MEMORY_DIR)/paging.c
 	@echo "==> Compiling paging module..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(MEMORY_DIR)/paging.c \
 	-o $(BUILD_DIR)/paging.o
 
 $(BUILD_DIR)/font.o: $(FONT_DIR)/font.c
 	@echo "==> Compiling font..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(FONT_DIR)/font.c \
 	-o $(BUILD_DIR)/font.o
 
@@ -62,13 +62,13 @@ $(BUILD_DIR)/idt.o: $(KERNEL_DIR)/idt.asm
 
 $(BUILD_DIR)/interrupts.o: $(KERNEL_DIR)/interrupts.c
 	@echo "==> Compiling interrupts..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(KERNEL_DIR)/interrupts.c \
 	-o $(BUILD_DIR)/interrupts.o
 
 $(BUILD_DIR)/event_queue.o: $(KERNEL_DIR)/event_queue.c
 	@echo "==> Compiling event queue..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(KERNEL_DIR)/event_queue.c \
 	-o $(BUILD_DIR)/event_queue.o
 
@@ -78,55 +78,55 @@ $(BUILD_DIR)/task_switch.o: $(KERNEL_DIR)/task_switch.asm
 
 $(BUILD_DIR)/task.o: $(KERNEL_DIR)/task.c
 	@echo "==> Compiling task..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(KERNEL_DIR)/task.c \
 	-o $(BUILD_DIR)/task.o
 
 $(BUILD_DIR)/timer.o: $(KERNEL_DIR)/timer.c
 	@echo "==> Compiling timer..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(KERNEL_DIR)/timer.c \
 	-o $(BUILD_DIR)/timer.o
 
 $(BUILD_DIR)/keyboard.o: $(KEYBOARD_DIR)/keyboard.c
 	@echo "==> Compiling keyboard input dirver..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(KEYBOARD_DIR)/keyboard.c \
 	-o $(BUILD_DIR)/keyboard.o
 
 $(BUILD_DIR)/mouse.o: $(MOUSE_DIR)/mouse.c
 	@echo "==> Compiling mouse input dirver..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(MOUSE_DIR)/mouse.c \
 	-o $(BUILD_DIR)/mouse.o
 
 $(BUILD_DIR)/cursor.o: $(MOUSE_DIR)/cursor.c
 	@echo "==> Compiling cursor..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(MOUSE_DIR)/cursor.c \
 	-o $(BUILD_DIR)/cursor.o
 
 $(BUILD_DIR)/graphics.o: $(GRAPHICS_DIR)/graphics.c
 	@echo "==> Compiling graphics module..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(GRAPHICS_DIR)/graphics.c \
 	-o $(BUILD_DIR)/graphics.o
 
 $(BUILD_DIR)/layer_manager.o: $(GRAPHICS_DIR)/layer_manager.c
 	@echo "==> Compiling layer manager..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(GRAPHICS_DIR)/layer_manager.c \
 	-o $(BUILD_DIR)/layer_manager.o
 
 $(BUILD_DIR)/compositor.o: $(GRAPHICS_DIR)/compositor.c
 	@echo "==> Compiling composite module..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(GRAPHICS_DIR)/compositor.c \
 	-o $(BUILD_DIR)/compositor.o
 
 $(BUILD_DIR)/window.o: $(WINDOW_DIR)/window.c
 	@echo "==> Compiling window manager..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(WINDOW_DIR)/window.c \
 	-o $(BUILD_DIR)/window.o
 
@@ -136,7 +136,7 @@ $(BUILD_DIR)/flush_gdt.o: $(KERNEL_DIR)/flush_gdt.asm
 
 $(BUILD_DIR)/gdt.o: $(KERNEL_DIR)/gdt.c
 	@echo "==> Compiling GDT module..."
-	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+	$(CC) -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic \
 	-c $(KERNEL_DIR)/gdt.c \
 	-o $(BUILD_DIR)/gdt.o
 
