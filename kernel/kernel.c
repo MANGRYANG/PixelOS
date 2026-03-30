@@ -14,6 +14,15 @@
 #include "../window/window.h"
 #include "../memory/heap.h"
 #include "../memory/paging.h"
+#include "../kernel/gdt.h"
+
+// .usertext 섹션 심볼
+extern uint8_t __user_text_start;
+extern uint8_t __user_text_end;
+
+// 유저 모드 진입 함수
+extern void jump_usermode(uint32_t user_eip, uint32_t user_esp);
+extern void usermode_entry(void);
 
 static Window* g_testwin = 0;
 
@@ -26,6 +35,9 @@ static int g_drag_off_y = 0;
 
 // 창이 드래그 상태인지 나타내는 변수
 static int g_dragging = 0;
+
+// 유저 모드 테스트를 위한 스택
+__attribute__((aligned(4096))) static uint8_t g_user_test_stack[4096];
 
 // 페이지 폴트 테스트 (임시)
 static void test_page_fault(void)
@@ -179,8 +191,18 @@ static void app_task(void* arg)
     }
 }
 
+// 유저 모드에서 실행할 임시 함수 (usertext 섹션)
+__attribute__((section(".usertext"), noreturn))
+void user_test_main(void)
+{
+    for (;;) { }
+}
+
 void kernel_main(void)
-{   
+{
+    // GDT 초기화
+    gdt_init();
+
     // 힙 초기화
     heap_init();
 
@@ -223,6 +245,41 @@ void kernel_main(void)
     cursor_init(mx, my);
 
     compositor_compose();
+
+    // usertext 섹션에 U/S 플래그 설정
+    if (paging_set_range_flags((uint32_t)&__user_text_start, (uint32_t)(&__user_text_end - &__user_text_start), P_US) < 0)
+    {
+        // 실패한 경우
+        window_put_string(g_testwin, "[FAIL] user text mapping failed\n", COLOR_LIGHT_RED);
+        compositor_compose();
+
+        for (;;)
+        {
+            __asm__ volatile ("hlt");
+        }
+    }
+
+    // 유저 모드 테스트 스택에 R/W, U/S 플래그 설정
+    if (paging_set_range_flags((uint32_t)g_user_test_stack, 4096, P_US | P_RW) < 0)
+    {
+        window_put_string(g_testwin, "[FAIL] user stack mapping failed\n", COLOR_LIGHT_RED);
+        compositor_compose();
+
+        for (;;)
+        {
+            __asm__ volatile ("hlt");
+        }
+    }
+
+    window_put_string(g_testwin, "[RING3] jump to user mode...\n", COLOR_BROWN);
+    compositor_compose();
+
+    jump_usermode((uint32_t)usermode_entry, (uint32_t)(g_user_test_stack + 4096));
+
+    for (;;)
+    {
+        __asm__ volatile ("hlt");
+    }
 
     task_init();
     task_create(idle_task, 0, 8192);

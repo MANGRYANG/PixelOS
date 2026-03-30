@@ -8,6 +8,13 @@ SECTIONS {              # kernel.bin의 메모리 배치 규칙 정의
         *(.text*)       # 모든 실행 코드를 하나로 묶어 배치
     }
 
+    .usertext : ALIGN(4096)
+    {
+        __user_text_start = .;
+        *(.usertext*)
+        __user_text_end = .;
+    }
+
     .rodata : ALIGN(4096)
     {
         *(.rodata*)     # 모든 읽기 전용 데이터를 하나로 묶어 배치

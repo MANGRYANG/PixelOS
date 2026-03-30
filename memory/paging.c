@@ -8,6 +8,12 @@ static void* k_memset(void* dest, uint8_t value, uint32_t size)
     return dest;
 }
 
+// 주소를 4KiB 경계로 올림 정렬하는 내부 헬퍼
+static inline uint32_t align_up_4k(uint32_t x)
+{
+    return (x + 0xFFFu) & ~0xFFFu;
+}
+
 // 주소를 4KiB 경계로 내림 정렬하는 내부 헬퍼
 static inline uint32_t align_down_4k(uint32_t x)
 {
@@ -123,9 +129,21 @@ int map_page(uint32_t virt, uint32_t phys, uint32_t flags)
         return -1;
     }
 
+    // U/S 플래그를 부여한 경우 PDE의 U/S 플래그도 세팅
+    if (flags & P_US)
+    {
+        g_page_directory[pde_index(virt)] |= P_US;
+    }
+
     // 페이지 테이블의 PTE에 물리 프레임 주소 매핑
     pt[pte_index(virt)] = (phys & 0xFFFFF000u) | (flags & 0xFFFu) | P_P;
     
+    // 페이징이 활성화되어 있는 경우 TLB 갱신
+    if (read_cr0() & 0x80000000u)
+    {
+        write_cr3(paging_get_directory_phys());
+    }
+
     return 0;
 }
 
@@ -147,6 +165,54 @@ int unmap_page(uint32_t virt)
     // 매핑 해제
     pt[pte_index(virt)] = 0;
     
+    return 0;
+}
+
+// 이미 매핑된 페이지 범위에 플래그를 부여하는 함수
+int paging_set_range_flags(uint32_t virt, uint32_t size, uint32_t flags)
+{
+    // 페이지 크기가 0인 경우 무시
+    if (size == 0)
+    {
+        return 0;
+    }
+
+    // 전달된 범위가 걸쳐 있는 페이지를 모두 포함시키기 위해 정렬
+    uint32_t start = align_down_4k(virt);
+    uint32_t end = align_up_4k(virt + size);
+
+    for (uint32_t addr = start; addr < end; addr += PAGE_SIZE)
+    {
+        // 가상 주소에 해당하는 페이지 테이블이 존재하는지 검사
+        uint32_t* pt = get_pt_for(addr);
+        if (!pt)
+        {
+            return -1;
+        }
+
+        // 페이지가 물리 메모리에 실제로 연결되어 있는지 확인
+        uint32_t idx = pte_index(addr);
+        if ((pt[idx] & P_P) == 0)
+        {
+            return -1;
+        }
+
+        // 플래그 부여 (R/W, U/S)
+        pt[idx] |= (flags & (P_RW | P_US));
+
+        // U/S 플래그를 부여한 경우 PDE의 U/S 플래그도 세팅
+        if (flags & P_US)
+        {
+            g_page_directory[pde_index(addr)] |= P_US;
+        }
+    }
+
+    // 페이징이 활성화되어 있는 경우 TLB 갱신
+    if (read_cr0() & 0x80000000u)
+    {
+        write_cr3(paging_get_directory_phys());
+    }
+
     return 0;
 }
 
