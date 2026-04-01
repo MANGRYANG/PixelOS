@@ -195,6 +195,15 @@ static void app_task(void* arg)
 __attribute__((section(".usertext"), noreturn))
 void user_test_main(void)
 {
+    char test_msg[] = "Hello from ring3";
+
+    __asm__ volatile (
+        "int $0x80"
+        :
+        : "a"(1), "b"((uint32_t)test_msg), "c"(0), "d"(0)
+        : "memory"
+    );
+
     for (;;) { }
 }
 

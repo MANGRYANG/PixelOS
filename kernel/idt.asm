@@ -5,11 +5,13 @@ global timer_isr
 global keyboard_isr
 global mouse_isr
 global page_fault_isr
+global syscall_isr
 
 extern mouse_handler
 extern keyboard_handler
 extern timer_handler
 extern page_fault_handler
+extern syscall_handler
 
 ;-----------------------------------------------------------------------------
 ; IDT 로드
@@ -81,5 +83,31 @@ page_fault_isr:
     popa
 
     add esp, 4                  ; CPU가 스택에 추가한 error_code 정리
+
+    iretd
+
+;-----------------------------------------------------------------------------
+; 시스템 콜 인터럽트 서비스 루틴
+;-----------------------------------------------------------------------------
+syscall_isr:
+    pusha
+
+    mov eax, [esp + 28]         ; 시스템 콜 번호 (syscall_num)
+    mov ecx, [esp + 16]         ; 시스템 콜 인자 (arg0)
+    mov edx, [esp + 20]         ; 시스템 콜 인자 (arg1)
+    mov ebx, [esp + 24]         ; 시스템 콜 인자 (arg2)
+
+    push ebx                    ; 4번째 인자: arg2
+    push edx                    ; 3번째 인자: arg1
+    push ecx                    ; 2번째 인자: arg0
+    push eax                    ; 1번째 인자: syscall_num
+
+    call syscall_handler        ; syscall_handler 호출
+
+    add esp, 16                 ; 인자 정리 (스택에서 16바이트 제거)
+
+    mov [esp + 28], eax         ; 핸들러의 리턴값을 EAX 레지스터에 저장
+
+    popa
 
     iretd

@@ -14,6 +14,9 @@ void mouse_handler(void);           // 마우스 인터럽트 핸들러
 // 페이지 폴트 핸들러
 void page_fault_handler(uint32_t fault_addr, uint32_t error_code);
 
+// 시스템 콜 핸들러
+uint32_t syscall_handler(uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2);
+
 extern volatile uint32_t g_last_pf_addr;
 extern volatile uint32_t g_last_pf_err;
 
