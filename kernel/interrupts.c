@@ -1,5 +1,6 @@
 #include "io.h"
 #include "interrupts.h"
+#include "task.h"
 #include "../keyboard/keyboard.h"
 #include "../mouse/mouse.h"
 #include "../graphics/graphics.h"
@@ -185,6 +186,7 @@ enum
     SYS_DEBUG_PUTS = 1,
     SYS_GET_TICKS  = 2,
     SYS_KEY_DOWN   = 3,
+    SYS_YIELD      = 4,
 };
 
 // asm 코드에서 호출되는 시스템 콜 핸들러 정의
@@ -222,6 +224,13 @@ uint32_t syscall_handler(uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint
         {
             // 키 눌림 여부 반환
             return keyboard_is_key_down((uint8_t)arg0) ? 1u : 0u;
+        }
+
+        case SYS_YIELD:
+        {
+            // CPU 점유 양보
+            task_yield();
+            return 0;
         }
 
         default:

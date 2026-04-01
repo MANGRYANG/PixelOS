@@ -174,16 +174,17 @@ static void app_task(void* arg)
 {
     (void)arg;
     
-    // 테스트 시작 텍스트 출력
-    window_put_string(g_testwin, "[PF] test start\n", COLOR_BROWN);
+    // 태스크 실행 메시지 출력
+    window_put_string(g_testwin, "[RING3] launch from app task\n", COLOR_BROWN);
+    compositor_compose();
 
-    task_sleep(100);
+    task_sleep(50);
 
-    // 페이지 폴트 발생 코드
-    // test_page_fault();
+    // 유저 모드 진입
+    jump_usermode((uint32_t)usermode_entry, (uint32_t)(g_user_test_stack + 4096));
 
-    // 테스트 성공 메시지 출력
-    window_put_string(g_testwin, "[PASS] No page fault occurred!\n", COLOR_GREEN);
+    window_put_string(g_testwin, "[FAIL] returned from user mode\n", COLOR_LIGHT_RED);
+    compositor_compose();
 
     for (;;)
     {
@@ -195,22 +196,13 @@ static void app_task(void* arg)
 __attribute__((section(".usertext"), noreturn))
 void user_test_main(void)
 {
-    char test_msg_idle[] = "-";
-    char test_msg_left[] = "<";
-    char test_msg_right[] = ">";
-
+    char msg[] = "[RING3] running";
     uint32_t last_phase = 0xFFFFFFFFu;
 
     for (;;)
     {
         // tick을 저장할 변수
         uint32_t ticks;
-
-        // Left/Right 눌림 여부를 저장할 변수
-        uint32_t left_down;
-        uint32_t right_down;
-
-        char* msg;
 
         // SYS_GET_TICKS
         __asm__ volatile (
@@ -220,37 +212,8 @@ void user_test_main(void)
             : "memory"
         );
 
-         // SYS_KEY_DOWN (A: 0x1E)
-        __asm__ volatile (
-            "int $0x80"
-            : "=a"(left_down)
-            : "a"(3), "b"(0x1Eu), "c"(0), "d"(0)
-            : "memory"
-        );
-
-        // SYS_KEY_DOWN (D: 0x20)
-        __asm__ volatile (
-            "int $0x80"
-            : "=a"(right_down)
-            : "a"(3), "b"(0x20u), "c"(0), "d"(0)
-            : "memory"
-        );
-
-        if (left_down == right_down)
-        {
-            msg = test_msg_idle;
-        }
-        else if (left_down)
-        {
-            msg = test_msg_left;
-        }
-        else
-        {
-            msg = test_msg_right;
-        }
-
-        // 100Hz 기준 약 0.1초마다 페이즈 전환
-        uint32_t phase = (ticks / 10u) & 1u;
+        // 100Hz 기준 약 1초마다 페이즈 전환
+        uint32_t phase = (ticks / 100u) & 1u;
 
         // 페이즈 변경 시
         if (phase != last_phase)
@@ -266,6 +229,14 @@ void user_test_main(void)
                 : "memory"
             );
         }
+
+        // SYS_YIELD
+        __asm__ volatile (
+            "int $0x80"
+            :
+            : "a"(4), "b"(0), "c"(0), "d"(0)
+            : "memory"
+        );
     }
 }
 
@@ -342,15 +313,8 @@ void kernel_main(void)
         }
     }
 
-    window_put_string(g_testwin, "[RING3] jump to user mode...\n", COLOR_BROWN);
+    window_put_string(g_testwin, "[TASK] start scheduler...\n", COLOR_BROWN);
     compositor_compose();
-
-    jump_usermode((uint32_t)usermode_entry, (uint32_t)(g_user_test_stack + 4096));
-
-    for (;;)
-    {
-        __asm__ volatile ("hlt");
-    }
 
     task_init();
     task_create(idle_task, 0, 8192);
