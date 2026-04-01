@@ -195,16 +195,45 @@ static void app_task(void* arg)
 __attribute__((section(".usertext"), noreturn))
 void user_test_main(void)
 {
-    char test_msg[] = "Hello from ring3";
+    char test_msg_0[] = "tick phase A";
+    char test_msg_1[] = "tick phase B";
 
-    __asm__ volatile (
-        "int $0x80"
-        :
-        : "a"(1), "b"((uint32_t)test_msg), "c"(0), "d"(0)
-        : "memory"
-    );
+    uint32_t last_phase = 0xFFFFFFFFu;
 
-    for (;;) { }
+    for (;;)
+    {
+        // tick을 저장할 변수
+        uint32_t ticks;
+
+        // SYS_GET_TICKS
+        __asm__ volatile (
+            "int $0x80"
+            : "=a"(ticks)
+            : "a"(2), "b"(0), "c"(0), "d"(0)
+            : "memory"
+        );
+
+        // 100Hz 기준 약 0.5초마다 페이즈 전환
+        uint32_t phase = (ticks / 50u) & 1u;
+
+        // 페이즈 변경 시
+        if (phase != last_phase)
+        {
+            // 이전 페이즈 갱신
+            last_phase = phase;
+
+            // 디버그 메시지 변경
+            char* msg = phase ? test_msg_0 : test_msg_1;
+
+            // SYS_DEBUG_PUTS
+            __asm__ volatile (
+                "int $0x80"
+                :
+                : "a"(1), "b"((uint32_t)msg), "c"(0), "d"(0)
+                : "memory"
+            );
+        }
+    }
 }
 
 void kernel_main(void)

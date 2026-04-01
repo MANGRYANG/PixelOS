@@ -183,6 +183,7 @@ void page_fault_handler(uint32_t fault_addr, uint32_t error_code)
 enum
 {
     SYS_DEBUG_PUTS = 1,
+    SYS_GET_TICKS  = 2,
 };
 
 // asm 코드에서 호출되는 시스템 콜 핸들러 정의
@@ -195,9 +196,25 @@ uint32_t syscall_handler(uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint
     {
         case SYS_DEBUG_PUTS:
         {
-            put_string(8, 8, (const char*)arg0, COLOR_LIGHT_GREEN);
+            const char* s = (const char*)arg0;
+
+            // 기존 문자열 영역 지우기
+            for (int i = 0; s[i] != '\0'; ++i)
+            {
+                remove_char(8 + i * 8, 8, COLOR_BLACK);
+            }
+
+            // 디버그 문자열 출력
+            put_string(8, 8, s, COLOR_LIGHT_GREEN);
             gfx_present();
+
             return 0;
+        }
+
+        case SYS_GET_TICKS:
+        {
+            // tick 반환
+            return g_timer_ticks;
         }
 
         default:
