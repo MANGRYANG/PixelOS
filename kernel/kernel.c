@@ -195,8 +195,9 @@ static void app_task(void* arg)
 __attribute__((section(".usertext"), noreturn))
 void user_test_main(void)
 {
-    char test_msg_0[] = "tick phase A";
-    char test_msg_1[] = "tick phase B";
+    char test_msg_idle[] = "-";
+    char test_msg_left[] = "<";
+    char test_msg_right[] = ">";
 
     uint32_t last_phase = 0xFFFFFFFFu;
 
@@ -204,6 +205,12 @@ void user_test_main(void)
     {
         // tick을 저장할 변수
         uint32_t ticks;
+
+        // Left/Right 눌림 여부를 저장할 변수
+        uint32_t left_down;
+        uint32_t right_down;
+
+        char* msg;
 
         // SYS_GET_TICKS
         __asm__ volatile (
@@ -213,17 +220,43 @@ void user_test_main(void)
             : "memory"
         );
 
-        // 100Hz 기준 약 0.5초마다 페이즈 전환
-        uint32_t phase = (ticks / 50u) & 1u;
+         // SYS_KEY_DOWN (A: 0x1E)
+        __asm__ volatile (
+            "int $0x80"
+            : "=a"(left_down)
+            : "a"(3), "b"(0x1Eu), "c"(0), "d"(0)
+            : "memory"
+        );
+
+        // SYS_KEY_DOWN (D: 0x20)
+        __asm__ volatile (
+            "int $0x80"
+            : "=a"(right_down)
+            : "a"(3), "b"(0x20u), "c"(0), "d"(0)
+            : "memory"
+        );
+
+        if (left_down == right_down)
+        {
+            msg = test_msg_idle;
+        }
+        else if (left_down)
+        {
+            msg = test_msg_left;
+        }
+        else
+        {
+            msg = test_msg_right;
+        }
+
+        // 100Hz 기준 약 0.1초마다 페이즈 전환
+        uint32_t phase = (ticks / 10u) & 1u;
 
         // 페이즈 변경 시
         if (phase != last_phase)
         {
             // 이전 페이즈 갱신
             last_phase = phase;
-
-            // 디버그 메시지 변경
-            char* msg = phase ? test_msg_0 : test_msg_1;
 
             // SYS_DEBUG_PUTS
             __asm__ volatile (
