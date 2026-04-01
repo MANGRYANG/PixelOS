@@ -1,5 +1,6 @@
 #include "io.h"
 #include "interrupts.h"
+#include "task.h"
 #include "../keyboard/keyboard.h"
 #include "../mouse/mouse.h"
 #include "../graphics/graphics.h"
@@ -34,6 +35,7 @@ extern void timer_isr(void);
 extern void keyboard_isr(void);
 extern void mouse_isr(void);
 extern void page_fault_isr(void);
+extern void syscall_isr(void);
 
 // IDT 초기화를 위한 간단한 memset 함수(내부 함수)
 static void* memset(void *dest, uint8_t value, uint32_t size)
@@ -178,6 +180,64 @@ void page_fault_handler(uint32_t fault_addr, uint32_t error_code)
     }
 }
 
+// 시스템 콜 넘버 매핑용 Enum
+enum
+{
+    SYS_DEBUG_PUTS = 1,
+    SYS_GET_TICKS  = 2,
+    SYS_KEY_DOWN   = 3,
+    SYS_YIELD      = 4,
+};
+
+// asm 코드에서 호출되는 시스템 콜 핸들러 정의
+uint32_t syscall_handler(uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+    (void)arg1;
+    (void)arg2;
+
+    switch(syscall_no)
+    {
+        case SYS_DEBUG_PUTS:
+        {
+            const char* s = (const char*)arg0;
+
+            // 기존 문자열 영역 지우기
+            for (int i = 0; s[i] != '\0'; ++i)
+            {
+                remove_char(8 + i * 8, 8, COLOR_BLACK);
+            }
+
+            // 디버그 문자열 출력
+            put_string(8, 8, s, COLOR_LIGHT_GREEN);
+            gfx_present();
+
+            return 0;
+        }
+
+        case SYS_GET_TICKS:
+        {
+            // tick 반환
+            return g_timer_ticks;
+        }
+
+        case SYS_KEY_DOWN:
+        {
+            // 키 눌림 여부 반환
+            return keyboard_is_key_down((uint8_t)arg0) ? 1u : 0u;
+        }
+
+        case SYS_YIELD:
+        {
+            // CPU 점유 양보
+            task_yield();
+            return 0;
+        }
+
+        default:
+            return -1;
+    }
+}
+
 // 인터럽트 초기화 함수
 void interrupts_init(void)
 {
@@ -214,6 +274,12 @@ void interrupts_init(void)
     // 셀렉터(GDT 코드 세그먼트) 0x08
     // type_attributes 0x8E (DPL 0, 32비트 인터럽트 게이트)
     idt_set_gate(0x0E, (uint32_t)page_fault_isr, 0x08, 0x8E);
+
+    // 시스템 콜 인터럽트 설정 -> IDT 인덱스 0x80에 매핑됨
+    // 시스템 콜 발생 시 syscall_isr 호출
+    // 셀렉터(GDT 코드 세그먼트) 0x08
+    // type_attributes 0xEE (DPL 3, 32비트 인터럽트 게이트)
+    idt_set_gate(0x80, (uint32_t)syscall_isr, 0x08, 0xEE);
 
     // IDT 로드
     idt_load((uint32_t)&idtp);
