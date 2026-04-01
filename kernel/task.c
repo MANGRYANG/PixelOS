@@ -1,5 +1,6 @@
 #include "task.h"
 #include "interrupts.h"
+#include "gdt.h"
 #include "../memory/heap.h"
 
 #define MAX_TASKS 4
@@ -16,6 +17,12 @@ static uint32_t* g_main_esp = 0;
 
 // 트램폴린에서 현재 태스크를 알아내기 위한 포인터
 static Task* g_current_task = 0;
+
+// 태스크 전용 스택의 top을 반환하는 내부 함수
+static uint32_t task_kernel_stack_top(const Task* t)
+{
+    return (uint32_t)(t->stack + t->stack_size);
+}
 
 // 유휴 상태 루프
 __attribute__((noreturn))
@@ -144,6 +151,9 @@ void task_start(void)
     g_current = next;
     g_current_task = &g_tasks[g_current];
 
+    // 현재 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
+
     // 해당 태스크로 컨텍스트 스위칭
     task_switch(&g_main_esp, g_tasks[g_current].esp);
 
@@ -164,6 +174,9 @@ void task_yield(void)
     int prev = g_current;
     g_current = next;
     g_current_task = &g_tasks[g_current];
+
+    // 현재 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
 
     // 해당 태스크로 컨텍스트 스위칭
     task_switch(&g_tasks[prev].esp, g_tasks[g_current].esp);
@@ -211,6 +224,9 @@ void task_exit(void)
     int prev = g_current;
     g_current = next;
     g_current_task = &g_tasks[g_current];
+
+    // 현재 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
 
     // 해당 태스크로 컨텍스트 스위칭
     task_switch(&g_tasks[prev].esp, g_tasks[g_current].esp);
