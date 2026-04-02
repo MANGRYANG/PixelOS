@@ -92,21 +92,23 @@ page_fault_isr:
 syscall_isr:
     pusha
 
+    mov esi, esp                ; Trap Frame 사작 주소 (frame)
     mov eax, [esp + 28]         ; 시스템 콜 번호 (syscall_num)
-    mov ecx, [esp + 16]         ; 시스템 콜 인자 (arg0)
+    mov ecx, [esp + 24]         ; 시스템 콜 인자 (arg0)
     mov edx, [esp + 20]         ; 시스템 콜 인자 (arg1)
-    mov ebx, [esp + 24]         ; 시스템 콜 인자 (arg2)
+    mov ebx, [esp + 16]         ; 시스템 콜 인자 (arg2)
 
-    push ebx                    ; 4번째 인자: arg2
-    push edx                    ; 3번째 인자: arg1
-    push ecx                    ; 2번째 인자: arg0
-    push eax                    ; 1번째 인자: syscall_num
+    push ebx                    ; 5번째 인자: arg2
+    push edx                    ; 4번째 인자: arg1
+    push ecx                    ; 3번째 인자: arg0
+    push eax                    ; 2번째 인자: syscall_num
+    push esi                    ; 1번째 인자: TrapFrame* frame
 
     call syscall_handler        ; syscall_handler 호출
 
-    add esp, 16                 ; 인자 정리 (스택에서 16바이트 제거)
+    add esp, 20                 ; 인자 정리 (스택에서 20바이트 제거)
 
-    mov [esp + 28], eax         ; 핸들러의 리턴값을 EAX 레지스터에 저장
+    mov esp, eax
 
     popa
 

@@ -190,7 +190,7 @@ enum
 };
 
 // asm 코드에서 호출되는 시스템 콜 핸들러 정의
-uint32_t syscall_handler(uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2)
+TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg1;
     (void)arg2;
@@ -211,30 +211,34 @@ uint32_t syscall_handler(uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint
             put_string(8, 8, s, COLOR_LIGHT_GREEN);
             gfx_present();
 
-            return 0;
+            frame->eax = 0;
+            return frame;
         }
 
         case SYS_GET_TICKS:
         {
             // tick 반환
-            return g_timer_ticks;
+            frame->eax = g_timer_ticks;
+            return frame;
         }
 
         case SYS_KEY_DOWN:
         {
             // 키 눌림 여부 반환
-            return keyboard_is_key_down((uint8_t)arg0) ? 1u : 0u;
+            frame->eax = keyboard_is_key_down((uint8_t)arg0) ? 1u : 0u;
+            return frame;
         }
 
         case SYS_YIELD:
         {
             // CPU 점유 양보
-            task_yield();
-            return 0;
+            frame->eax = 0;
+            return task_yield_from_user(frame);
         }
 
         default:
-            return -1;
+            frame->eax = (uint32_t)-1;
+            return frame;
     }
 }
 

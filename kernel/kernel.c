@@ -208,7 +208,7 @@ void user_test_main(void)
         __asm__ volatile (
             "int $0x80"
             : "=a"(ticks)
-            : "a"(2), "b"(0), "c"(0), "d"(0)
+            : "a"(2), "c"(0), "d"(0), "b"(0)
             : "memory"
         );
 
@@ -225,7 +225,7 @@ void user_test_main(void)
             __asm__ volatile (
                 "int $0x80"
                 :
-                : "a"(1), "b"((uint32_t)msg), "c"(0), "d"(0)
+                : "a"(1), "c"((uint32_t)msg), "d"(0), "b"(0)
                 : "memory"
             );
         }
@@ -234,7 +234,7 @@ void user_test_main(void)
         __asm__ volatile (
             "int $0x80"
             :
-            : "a"(4), "b"(0), "c"(0), "d"(0)
+            : "a"(4), "c"(0), "d"(0), "b"(0)
             : "memory"
         );
     }

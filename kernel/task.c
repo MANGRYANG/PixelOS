@@ -51,6 +51,8 @@ void task_init(void)
         g_tasks[i].fn = 0;
         g_tasks[i].arg = 0;
         g_tasks[i].alive = false;
+        g_tasks[i].is_user = false;
+        g_tasks[i].user_frame = 0;
     }
     g_count = 0;
     g_current = -1;
@@ -100,6 +102,8 @@ int task_create(task_fn fn, void* arg, size_t stack_size)
     t->alive = true;
     t->state = TASK_RUNNABLE;
     t->wake_tick = 0;
+    t->is_user = false;
+    t->user_frame = 0;
 
     // 스택 기본 구조 생성
     t->esp = build_initial_stack(t->stack, t->stack_size);
@@ -151,7 +155,7 @@ void task_start(void)
     g_current = next;
     g_current_task = &g_tasks[g_current];
 
-    // 현재 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    // 전환할 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
     gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
 
     // 해당 태스크로 컨텍스트 스위칭
@@ -175,11 +179,64 @@ void task_yield(void)
     g_current = next;
     g_current_task = &g_tasks[g_current];
 
-    // 현재 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    // 전환할 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
     gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
 
     // 해당 태스크로 컨텍스트 스위칭
     task_switch(&g_tasks[prev].esp, g_tasks[g_current].esp);
+}
+
+// 유저 모드 전용 협력 스케줄링 함수
+TrapFrame* task_yield_from_user(TrapFrame* frame)
+{
+    // 전달받은 Trap frame 포인터가 유효하지 않은 경우 무시
+    if (!frame)
+    {
+        return frame;
+    }
+
+    // 현재 태스크 번호가 범위 밖인 경우 무시
+    if (g_current < 0 || g_current >= g_count)
+    {
+        return frame;
+    }
+
+    // 현재 상태 스냅샷
+    Task* current = &g_tasks[g_current];
+    current->is_user = true;
+    current->user_frame = frame;
+
+    // 실행 중인 태스크가 1개인 경우 전환 생략
+    if (g_count <= 1)
+    {
+        return current->user_frame;
+    }
+
+    // 다음에 실행할 태스크 탐색
+    int next = pick_next(g_current);
+    // 없거나 자기 자신인 경우 전환 생략
+    if (next < 0 || next == g_current)
+    {
+        return current->user_frame;
+    }
+
+    int prev = g_current;
+    g_current = next;
+    g_current_task = &g_tasks[g_current];
+
+    // 전환할 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
+
+    // 해당 태스크로 컨텍스트 스위칭
+    task_switch(&g_tasks[prev].esp, g_tasks[g_current].esp);
+
+    // 유저 모드 태스크가 다시 스케줄링되었을 때 이어서 실행
+    if (g_current_task && g_current_task->is_user && g_current_task->user_frame)
+    {
+        return g_current_task->user_frame;
+    }
+
+    return frame;
 }
 
 // 태스크 슬립 함수
