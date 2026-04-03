@@ -263,6 +263,39 @@ void task_sleep(uint32_t ticks)
     task_yield();
 }
 
+// 유저 모드 전용 슬립 함수
+TrapFrame* task_sleep_from_user(TrapFrame* frame, uint32_t ticks)
+{
+    // 전달받은 Trap frame 포인터가 유효하지 않은 경우 무시
+    if (!frame)
+    {
+        return frame;
+    }
+
+    // 현재 태스크 번호가 범위 밖인 경우 무시
+    if (g_current < 0 || g_current >= g_count)
+    {
+        return frame;
+    }
+
+    // 0 tick 슬립은 단순 양보로 처리
+    if (ticks == 0)
+    {
+        return task_yield_from_user(frame);
+    }
+
+    // 현재 태스크를 슬립 상태로 전환
+    Task* t = &g_tasks[g_current];
+
+    __asm__ volatile("cli");
+    t->state = TASK_SLEEPING;
+    t->wake_tick = g_timer_ticks + ticks;
+    __asm__ volatile("sti");
+
+    // 유저 모드 컨텍스트를 저장하고 다음 태스크로 전환
+    return task_yield_from_user(frame);
+}
+
 // 태스크 종료 함수
 __attribute__((noreturn))
 void task_exit(void)

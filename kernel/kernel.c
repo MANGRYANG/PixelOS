@@ -216,8 +216,8 @@ void user_test_main(void)
             app_debug_puts(msg);
         }
 
-        // CPU 양보
-        app_yield();
+        // 10 Tick 동안 슬립
+        app_sleep(10);
     }
 }
 

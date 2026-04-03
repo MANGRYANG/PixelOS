@@ -42,5 +42,7 @@ void task_yield(void);
 TrapFrame* task_yield_from_user(TrapFrame* frame);
 // 태스크 슬립 함수
 void task_sleep(uint32_t ticks);
+// 유저 모드 전용 슬립 함수
+TrapFrame* task_sleep_from_user(TrapFrame* frame, uint32_t ticks);
 // 태스크 종료 함수
 __attribute__((noreturn)) void task_exit(void);

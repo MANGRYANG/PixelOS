@@ -228,6 +228,13 @@ TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0,
             return task_yield_from_user(frame);
         }
 
+        case SYS_SLEEP:
+        {
+            // 현재 유저 태스크를 슬립 상태로 전환
+            frame->eax = 0;
+            return task_sleep_from_user(frame, arg0);
+        }
+
         default:
             frame->eax = (uint32_t)-1;
             return frame;

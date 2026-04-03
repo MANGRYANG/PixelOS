@@ -8,4 +8,5 @@ typedef enum SyscallNum
     SYS_GET_TICKS  = 2,
     SYS_KEY_DOWN   = 3,
     SYS_YIELD      = 4,
+    SYS_SLEEP      = 5,
 } SyscallNum;

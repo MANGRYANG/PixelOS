@@ -53,3 +53,14 @@ static inline void app_yield(void)
         : "memory"
     );
 }
+
+__attribute__((section(".usertext"), always_inline))
+static inline void app_sleep(uint32_t ticks)
+{
+    __asm__ volatile (
+        "int $0x80"
+        :
+        : "a"(SYS_SLEEP), "c"(ticks), "d"(0), "b"(0)
+        : "memory"
+    );
+}
