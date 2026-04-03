@@ -15,6 +15,7 @@
 #include "../memory/heap.h"
 #include "../memory/paging.h"
 #include "../kernel/gdt.h"
+#include "../app/app_api.h"
 
 // .usertext 섹션 심볼
 extern uint8_t __user_text_start;
@@ -201,16 +202,7 @@ void user_test_main(void)
 
     for (;;)
     {
-        // tick을 저장할 변수
-        uint32_t ticks;
-
-        // SYS_GET_TICKS
-        __asm__ volatile (
-            "int $0x80"
-            : "=a"(ticks)
-            : "a"(2), "c"(0), "d"(0), "b"(0)
-            : "memory"
-        );
+        uint32_t ticks = app_get_ticks();
 
         // 100Hz 기준 약 1초마다 페이즈 전환
         uint32_t phase = (ticks / 100u) & 1u;
@@ -220,23 +212,12 @@ void user_test_main(void)
         {
             // 이전 페이즈 갱신
             last_phase = phase;
-
-            // SYS_DEBUG_PUTS
-            __asm__ volatile (
-                "int $0x80"
-                :
-                : "a"(1), "c"((uint32_t)msg), "d"(0), "b"(0)
-                : "memory"
-            );
+            // 디버그 문자열 출력
+            app_debug_puts(msg);
         }
 
-        // SYS_YIELD
-        __asm__ volatile (
-            "int $0x80"
-            :
-            : "a"(4), "c"(0), "d"(0), "b"(0)
-            : "memory"
-        );
+        // CPU 양보
+        app_yield();
     }
 }
 

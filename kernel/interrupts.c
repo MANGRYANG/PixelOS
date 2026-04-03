@@ -1,6 +1,7 @@
 #include "io.h"
 #include "interrupts.h"
 #include "task.h"
+#include "syscall.h"
 #include "../keyboard/keyboard.h"
 #include "../mouse/mouse.h"
 #include "../graphics/graphics.h"
@@ -179,15 +180,6 @@ void page_fault_handler(uint32_t fault_addr, uint32_t error_code)
         __asm__ volatile ("hlt");
     }
 }
-
-// 시스템 콜 넘버 매핑용 Enum
-enum
-{
-    SYS_DEBUG_PUTS = 1,
-    SYS_GET_TICKS  = 2,
-    SYS_KEY_DOWN   = 3,
-    SYS_YIELD      = 4,
-};
 
 // asm 코드에서 호출되는 시스템 콜 핸들러 정의
 TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2)
