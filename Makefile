@@ -38,7 +38,8 @@ KERNEL_OBJS = \
 	$(BUILD_DIR)/compositor.o \
 	$(BUILD_DIR)/flush_gdt.o \
 	$(BUILD_DIR)/gdt.o \
-	$(BUILD_DIR)/user_mode.o
+	$(BUILD_DIR)/user_mode.o \
+	$(BUILD_DIR)/game_window.o
 
 CFLAGS = -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic
 ASFLAGS_BIN = -f bin

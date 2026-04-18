@@ -16,6 +16,7 @@
 #include "../memory/paging.h"
 #include "../kernel/gdt.h"
 #include "../app/app_api.h"
+#include "../kernel/game_window.h"
 
 // .usertext 섹션 심볼
 extern uint8_t __user_text_start;
@@ -29,6 +30,9 @@ static Window* g_testwin = 0;
 
 // 드래그를 통해 이동할 윈도우
 static Window* g_dragwin = 0;
+
+// 게임 화면을 렌더링할 윈도우
+static Window* g_gamewin = 0;
 
 // 마우스로 클릭한 부분과 창의 좌상단의 오프셋
 static int g_drag_off_x = 0;
@@ -238,63 +242,58 @@ void kernel_debug_puts(const char* s)
 __attribute__((section(".usertext"), noreturn))
 void user_test_main(void)
 {
-    char idle_msg[] = "[RING3] idle";
-    char left_msg[] = "[RING3] left";
-    char right_msg[] = "[RING3] right";
+    // 시작 위치
+    int curr_x = 50, curr_y = 50;
 
-    uint32_t last_log_tick = 0;
-    uint32_t last_state = 0xFFFFFFFFu;
+    // 시작 방향
+    int x_direction = 1, y_direction = 1;
+
+    const int ball_w = 5;
+    const int ball_h = 5;
+
+    uint32_t size = app_game_get_size();
+    uint16_t game_w = (uint16_t)(size & 0xFFFF);
+    uint16_t game_h = (uint16_t)(size >> 16);
 
     for (;;)
     {
-        uint32_t state;
+        // 게임 화면 초기화
+        app_game_clear(COLOR_BLACK);
 
-        // A scancode: 0x1E, B scancode: 0x20
-        if (app_key_down(0x1E) == app_key_down(0x20))
+        // 현재 위치에 ball 렌더링
+        app_game_fill_rect(curr_x, curr_y, ball_w, ball_h, 10);
+
+        // 화면 렌더링
+        app_present();
+
+        // ball 위치 갱신
+        curr_x += x_direction;
+        curr_y += y_direction;
+
+        // ball의 x 좌표가 0 이하인 경우 x 방향 반전
+        if (curr_x <= 0)
         {
-            state = 0;
+            curr_x = 0;
+            x_direction = 1;
+        }
+        // ball의 x 좌표가 게임 윈도우의 너비 이상인 경우 x 방향 반전
+        else if (curr_x + ball_w >= game_w)
+        {
+            curr_x = game_w - ball_w;
+            x_direction = -1;
         }
 
-        // A 키다운
-        else if (app_key_down(0x1E))
+        // ball의 y 좌표가 0 이하인 경우 y 방향 반전
+        if (curr_y <= 0)
         {
-            state = 1;
+            curr_y = 0;
+            y_direction = 1;
         }
-
-        // D 키다운
-        else
+        // ball의 y 좌표가 게임 윈도우의 높이 이상인 경우 y 방향 반전
+        else if (curr_y + ball_h >= game_h)
         {
-            state = 2;
-        }
-
-        uint32_t now = app_get_ticks();
-
-        // 상태가 바뀌었거나, 50 Tick 이상 지났을 때만 출력
-        if (state != last_state || (now - last_log_tick) >= 50u)
-        {
-            last_state = state;
-            last_log_tick = now;
-
-            switch (state)
-            {
-                case 1:
-                {
-                    app_debug_puts(left_msg);
-                    break;
-                }
-
-                case 2:
-                {
-                    app_debug_puts(right_msg);
-                    break;
-                }
-                    
-                default:
-                {
-                    app_debug_puts(idle_msg);
-                    break;
-                }
-            }
+            curr_y = game_h - ball_h;
+            y_direction = -1;
         }
 
         app_sleep(1);
@@ -340,8 +339,7 @@ void kernel_main(void)
 
     // 테스트용 window 생성
     g_testwin = wm_create_window(50, 50, 200, 140, COLOR_WHITE, COLOR_BLUE, "TEST");
-
-    wm_create_window(150, 70, 200, 140, COLOR_WHITE, COLOR_BLUE, "HIT");
+    g_gamewin = kernel_game_init();
 
     int mx = get_mouse_x();
     int my = get_mouse_y();
