@@ -1,5 +1,6 @@
 #include "task.h"
 #include "interrupts.h"
+#include "gdt.h"
 #include "../memory/heap.h"
 
 #define MAX_TASKS 4
@@ -16,6 +17,12 @@ static uint32_t* g_main_esp = 0;
 
 // 트램폴린에서 현재 태스크를 알아내기 위한 포인터
 static Task* g_current_task = 0;
+
+// 태스크 전용 스택의 top을 반환하는 내부 함수
+static uint32_t task_kernel_stack_top(const Task* t)
+{
+    return (uint32_t)(t->stack + t->stack_size);
+}
 
 // 유휴 상태 루프
 __attribute__((noreturn))
@@ -44,6 +51,8 @@ void task_init(void)
         g_tasks[i].fn = 0;
         g_tasks[i].arg = 0;
         g_tasks[i].alive = false;
+        g_tasks[i].is_user = false;
+        g_tasks[i].user_frame = 0;
     }
     g_count = 0;
     g_current = -1;
@@ -93,6 +102,8 @@ int task_create(task_fn fn, void* arg, size_t stack_size)
     t->alive = true;
     t->state = TASK_RUNNABLE;
     t->wake_tick = 0;
+    t->is_user = false;
+    t->user_frame = 0;
 
     // 스택 기본 구조 생성
     t->esp = build_initial_stack(t->stack, t->stack_size);
@@ -144,6 +155,9 @@ void task_start(void)
     g_current = next;
     g_current_task = &g_tasks[g_current];
 
+    // 전환할 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
+
     // 해당 태스크로 컨텍스트 스위칭
     task_switch(&g_main_esp, g_tasks[g_current].esp);
 
@@ -165,8 +179,64 @@ void task_yield(void)
     g_current = next;
     g_current_task = &g_tasks[g_current];
 
+    // 전환할 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
+
     // 해당 태스크로 컨텍스트 스위칭
     task_switch(&g_tasks[prev].esp, g_tasks[g_current].esp);
+}
+
+// 유저 모드 전용 협력 스케줄링 함수
+TrapFrame* task_yield_from_user(TrapFrame* frame)
+{
+    // 전달받은 Trap frame 포인터가 유효하지 않은 경우 무시
+    if (!frame)
+    {
+        return frame;
+    }
+
+    // 현재 태스크 번호가 범위 밖인 경우 무시
+    if (g_current < 0 || g_current >= g_count)
+    {
+        return frame;
+    }
+
+    // 현재 상태 스냅샷
+    Task* current = &g_tasks[g_current];
+    current->is_user = true;
+    current->user_frame = frame;
+
+    // 실행 중인 태스크가 1개인 경우 전환 생략
+    if (g_count <= 1)
+    {
+        return current->user_frame;
+    }
+
+    // 다음에 실행할 태스크 탐색
+    int next = pick_next(g_current);
+    // 없거나 자기 자신인 경우 전환 생략
+    if (next < 0 || next == g_current)
+    {
+        return current->user_frame;
+    }
+
+    int prev = g_current;
+    g_current = next;
+    g_current_task = &g_tasks[g_current];
+
+    // 전환할 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
+
+    // 해당 태스크로 컨텍스트 스위칭
+    task_switch(&g_tasks[prev].esp, g_tasks[g_current].esp);
+
+    // 유저 모드 태스크가 다시 스케줄링되었을 때 이어서 실행
+    if (g_current_task && g_current_task->is_user && g_current_task->user_frame)
+    {
+        return g_current_task->user_frame;
+    }
+
+    return frame;
 }
 
 // 태스크 슬립 함수
@@ -193,6 +263,39 @@ void task_sleep(uint32_t ticks)
     task_yield();
 }
 
+// 유저 모드 전용 슬립 함수
+TrapFrame* task_sleep_from_user(TrapFrame* frame, uint32_t ticks)
+{
+    // 전달받은 Trap frame 포인터가 유효하지 않은 경우 무시
+    if (!frame)
+    {
+        return frame;
+    }
+
+    // 현재 태스크 번호가 범위 밖인 경우 무시
+    if (g_current < 0 || g_current >= g_count)
+    {
+        return frame;
+    }
+
+    // 0 tick 슬립은 단순 양보로 처리
+    if (ticks == 0)
+    {
+        return task_yield_from_user(frame);
+    }
+
+    // 현재 태스크를 슬립 상태로 전환
+    Task* t = &g_tasks[g_current];
+
+    __asm__ volatile("cli");
+    t->state = TASK_SLEEPING;
+    t->wake_tick = g_timer_ticks + ticks;
+    __asm__ volatile("sti");
+
+    // 유저 모드 컨텍스트를 저장하고 다음 태스크로 전환
+    return task_yield_from_user(frame);
+}
+
 // 태스크 종료 함수
 __attribute__((noreturn))
 void task_exit(void)
@@ -211,6 +314,9 @@ void task_exit(void)
     int prev = g_current;
     g_current = next;
     g_current_task = &g_tasks[g_current];
+
+    // 현재 태스크의 전용 커널 스택 Top 주소로 TSS.esp0 갱신
+    gdt_set_kernel_stack(task_kernel_stack_top(g_current_task));
 
     // 해당 태스크로 컨텍스트 스위칭
     task_switch(&g_tasks[prev].esp, g_tasks[g_current].esp);

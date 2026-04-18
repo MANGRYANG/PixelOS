@@ -1,6 +1,7 @@
 #include "io.h"
 #include "interrupts.h"
 #include "task.h"
+#include "syscall.h"
 #include "../keyboard/keyboard.h"
 #include "../mouse/mouse.h"
 #include "../graphics/graphics.h"
@@ -180,17 +181,11 @@ void page_fault_handler(uint32_t fault_addr, uint32_t error_code)
     }
 }
 
-// 시스템 콜 넘버 매핑용 Enum
-enum
-{
-    SYS_DEBUG_PUTS = 1,
-    SYS_GET_TICKS  = 2,
-    SYS_KEY_DOWN   = 3,
-    SYS_YIELD      = 4,
-};
+// 커널 디버그 메시지 출력 함수 가져오기
+extern void kernel_debug_puts(const char* s);
 
 // asm 코드에서 호출되는 시스템 콜 핸들러 정의
-uint32_t syscall_handler(uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2)
+TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg1;
     (void)arg2;
@@ -200,41 +195,43 @@ uint32_t syscall_handler(uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint
         case SYS_DEBUG_PUTS:
         {
             const char* s = (const char*)arg0;
+            kernel_debug_puts(s);
 
-            // 기존 문자열 영역 지우기
-            for (int i = 0; s[i] != '\0'; ++i)
-            {
-                remove_char(8 + i * 8, 8, COLOR_BLACK);
-            }
-
-            // 디버그 문자열 출력
-            put_string(8, 8, s, COLOR_LIGHT_GREEN);
-            gfx_present();
-
-            return 0;
+            frame->eax = 0;
+            return frame;
         }
 
         case SYS_GET_TICKS:
         {
             // tick 반환
-            return g_timer_ticks;
+            frame->eax = g_timer_ticks;
+            return frame;
         }
 
         case SYS_KEY_DOWN:
         {
             // 키 눌림 여부 반환
-            return keyboard_is_key_down((uint8_t)arg0) ? 1u : 0u;
+            frame->eax = keyboard_is_key_down((uint8_t)arg0) ? 1u : 0u;
+            return frame;
         }
 
         case SYS_YIELD:
         {
             // CPU 점유 양보
-            task_yield();
-            return 0;
+            frame->eax = 0;
+            return task_yield_from_user(frame);
+        }
+
+        case SYS_SLEEP:
+        {
+            // 현재 유저 태스크를 슬립 상태로 전환
+            frame->eax = 0;
+            return task_sleep_from_user(frame, arg0);
         }
 
         default:
-            return -1;
+            frame->eax = (uint32_t)-1;
+            return frame;
     }
 }
 

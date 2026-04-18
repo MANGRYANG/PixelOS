@@ -15,6 +15,7 @@
 #include "../memory/heap.h"
 #include "../memory/paging.h"
 #include "../kernel/gdt.h"
+#include "../app/app_api.h"
 
 // .usertext 섹션 심볼
 extern uint8_t __user_text_start;
@@ -35,6 +36,9 @@ static int g_drag_off_y = 0;
 
 // 창이 드래그 상태인지 나타내는 변수
 static int g_dragging = 0;
+
+// 텍스트 출력 가능 여부를 나타내는 변수
+static int g_text_input_enabled = 0;
 
 // 유저 모드 테스트를 위한 스택
 __attribute__((aligned(4096))) static uint8_t g_user_test_stack[4096];
@@ -153,7 +157,10 @@ static void ui_task(void* arg)
 
                 case EV_KEY:
                 {
-                    wm_send_key((uint8_t)ev.key.ascii, ev.key.pressed);
+                    if (g_text_input_enabled)
+                    {
+                        wm_send_key((uint8_t)ev.key.ascii, ev.key.pressed);
+                    }
                     break;
                 }
 
@@ -173,10 +180,6 @@ static void ui_task(void* arg)
 static void app_task(void* arg)
 {
     (void)arg;
-    
-    // 태스크 실행 메시지 출력
-    window_put_string(g_testwin, "[RING3] launch from app task\n", COLOR_BROWN);
-    compositor_compose();
 
     task_sleep(50);
 
@@ -192,51 +195,109 @@ static void app_task(void* arg)
     }
 }
 
+void kernel_debug_puts(const char* s)
+{
+    if (!g_testwin || !g_testwin->in_use || !s)
+    {
+        return;
+    }
+
+    // TEST 창의 첫 번째 텍스트 줄 영역
+    const int text_x = 4;
+    const int text_y = FONT_HEIGHT + 4;
+    const int line_w = g_testwin->width - 8;
+    const int line_h = FONT_HEIGHT;
+
+    // 한 줄 전체를 배경색으로 지움
+    for (int y = 0; y < line_h; ++y)
+    {
+        int py = text_y + y;
+        if (py < 0 || py >= g_testwin->height)
+        {
+            continue;
+        }
+
+        for (int x = 0; x < line_w; ++x)
+        {
+            int px = text_x + x;
+            if (px < 0 || px >= g_testwin->width)
+            {
+                continue;
+            }
+
+            g_testwin->buffer[py * g_testwin->stride + px] = g_testwin->bg_color;
+        }
+    }
+
+    // 같은 위치에 다시 출력
+    window_draw_string(g_testwin, text_x, text_y, s, COLOR_LIGHT_GREEN);
+    compositor_compose();
+}
+
 // 유저 모드에서 실행할 임시 함수 (usertext 섹션)
 __attribute__((section(".usertext"), noreturn))
 void user_test_main(void)
 {
-    char msg[] = "[RING3] running";
-    uint32_t last_phase = 0xFFFFFFFFu;
+    char idle_msg[] = "[RING3] idle";
+    char left_msg[] = "[RING3] left";
+    char right_msg[] = "[RING3] right";
+
+    uint32_t last_log_tick = 0;
+    uint32_t last_state = 0xFFFFFFFFu;
 
     for (;;)
     {
-        // tick을 저장할 변수
-        uint32_t ticks;
+        uint32_t state;
 
-        // SYS_GET_TICKS
-        __asm__ volatile (
-            "int $0x80"
-            : "=a"(ticks)
-            : "a"(2), "b"(0), "c"(0), "d"(0)
-            : "memory"
-        );
-
-        // 100Hz 기준 약 1초마다 페이즈 전환
-        uint32_t phase = (ticks / 100u) & 1u;
-
-        // 페이즈 변경 시
-        if (phase != last_phase)
+        // A scancode: 0x1E, B scancode: 0x20
+        if (app_key_down(0x1E) == app_key_down(0x20))
         {
-            // 이전 페이즈 갱신
-            last_phase = phase;
-
-            // SYS_DEBUG_PUTS
-            __asm__ volatile (
-                "int $0x80"
-                :
-                : "a"(1), "b"((uint32_t)msg), "c"(0), "d"(0)
-                : "memory"
-            );
+            state = 0;
         }
 
-        // SYS_YIELD
-        __asm__ volatile (
-            "int $0x80"
-            :
-            : "a"(4), "b"(0), "c"(0), "d"(0)
-            : "memory"
-        );
+        // A 키다운
+        else if (app_key_down(0x1E))
+        {
+            state = 1;
+        }
+
+        // D 키다운
+        else
+        {
+            state = 2;
+        }
+
+        uint32_t now = app_get_ticks();
+
+        // 상태가 바뀌었거나, 50 Tick 이상 지났을 때만 출력
+        if (state != last_state || (now - last_log_tick) >= 50u)
+        {
+            last_state = state;
+            last_log_tick = now;
+
+            switch (state)
+            {
+                case 1:
+                {
+                    app_debug_puts(left_msg);
+                    break;
+                }
+
+                case 2:
+                {
+                    app_debug_puts(right_msg);
+                    break;
+                }
+                    
+                default:
+                {
+                    app_debug_puts(idle_msg);
+                    break;
+                }
+            }
+        }
+
+        app_sleep(1);
     }
 }
 
@@ -312,9 +373,6 @@ void kernel_main(void)
             __asm__ volatile ("hlt");
         }
     }
-
-    window_put_string(g_testwin, "[TASK] start scheduler...\n", COLOR_BROWN);
-    compositor_compose();
 
     task_init();
     task_create(idle_task, 0, 8192);
