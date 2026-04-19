@@ -42,19 +42,29 @@ static void pong_init(PongState* game)
 __attribute__((section(".usertext")))
 static void pong_handle_input(PongState* game)
 {
-    // W 키 입력 시
+    // Player 1: W/S 키로 왼쪽 패들 조작
     if (app_key_down(APP_KEY_W))
     {
         game->left_paddle_y -= game->paddle_speed;
     }
 
-    // S 키 입력 시
     if (app_key_down(APP_KEY_S))
     {
         game->left_paddle_y += game->paddle_speed;
     }
 
-    // 경계값 처리
+    // Player 2: 방향키 위/아래로 오른쪽 패들 조작
+    if (app_key_down(APP_KEY_UP))
+    {
+        game->right_paddle_y -= game->paddle_speed;
+    }
+
+    if (app_key_down(APP_KEY_DOWN))
+    {
+        game->right_paddle_y += game->paddle_speed;
+    }
+
+    // 왼쪽 패들 경계값 처리
     if (game->left_paddle_y < 0)
     {
         game->left_paddle_y = 0;
@@ -62,6 +72,16 @@ static void pong_handle_input(PongState* game)
     else if (game->left_paddle_y + game->paddle_h > game->game_h)
     {
         game->left_paddle_y = game->game_h - game->paddle_h;
+    }
+
+    // 오른쪽 패들 경계값 처리
+    if (game->right_paddle_y < 0)
+    {
+        game->right_paddle_y = 0;
+    }
+    else if (game->right_paddle_y + game->paddle_h > game->game_h)
+    {
+        game->right_paddle_y = game->game_h - game->paddle_h;
     }
 }
 
