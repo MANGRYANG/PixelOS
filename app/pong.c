@@ -8,6 +8,10 @@
 #define PADDLE_HEIGHT 28
 #define PADDLE_OFFSET_X 8
 
+#define CENTER_LINE_WIDTH 2
+#define CENTER_LINE_HEIGHT 6
+#define CENTER_LINE_GAP 4
+
 #define BALL_SIZE 8
 
 // pong 게임 초기화를 위한 내부 함수
@@ -183,6 +187,13 @@ static void pong_render(PongState* game)
 {
     // 게임 화면 초기화
     app_game_clear(COLOR_BLACK);
+
+    // 중앙 선 렌더링
+    int center_x = (game->game_w - CENTER_LINE_WIDTH) / 2;
+    for (int i = 0; i < game->game_h; i += (CENTER_LINE_HEIGHT + CENTER_LINE_GAP))
+    {
+        app_game_fill_rect(center_x, i, CENTER_LINE_WIDTH, CENTER_LINE_HEIGHT, COLOR_LIGHT_GRAY);
+    }
 
     // 패들 렌더링
     app_game_fill_rect(PADDLE_OFFSET_X, game->left_paddle_y, game->paddle_w, game->paddle_h, COLOR_WHITE);
