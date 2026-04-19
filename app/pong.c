@@ -2,6 +2,7 @@
 #include "app_api.h"
 #include "app_keys.h"
 #include "../graphics/color.h"
+#include <stdbool.h>
 
 #define PADDLE_WIDTH 6
 #define PADDLE_HEIGHT 28
@@ -23,8 +24,8 @@ static void pong_init(PongState* game)
     // game 객체의 공 관련 정보 초기화
     // 크기: 8, 시작 위치: 게임 렌더링 영역의 중앙, 속도: x, y축 방향으로 1
     game->ball_size = BALL_SIZE;
-    game->ball_curr_x = game->game_w / 2;
-    game->ball_curr_y = game->game_h / 2;
+    game->ball_curr_x = (game->game_w - game->ball_size) / 2;
+    game->ball_curr_y = (game->game_h - game->ball_size) / 2;
     game->ball_velocity_x = 1;
     game->ball_velocity_y = 1;
 
@@ -85,37 +86,95 @@ static void pong_handle_input(PongState* game)
     }
 }
 
+// 두 사각형의 충돌 여부를 확인하는 내부 함수
+__attribute__((section(".usertext")))
+static int pong_rects_overlap(
+    int ax, int ay, int aw, int ah,
+    int bx, int by, int bw, int bh
+)
+{
+    return (ax < (bx + bw)) && ((ax + aw) > bx) && (ay < (by + bh)) && ((ay + ah) > by);
+}
+
+// 공의 방향을 제어하기 위한 내부 함수
+__attribute__((section(".usertext")))
+static void pong_reflect_ball(PongState* game, bool reverse_x, bool reverse_y)
+{
+    game->ball_velocity_x *= (reverse_x ? -1 : 1);
+    game->ball_velocity_y *= (reverse_y ? -1 : 1);
+}
+
+// 공의 위치를 중앙으로 되돌리는 내부 함수
+__attribute__((section(".usertext")))
+static void pong_reset_ball(PongState* game, int direction)
+{
+    // 공 위치 재설정
+    game->ball_curr_x = (game->game_w - game->ball_size) / 2;
+    game->ball_curr_y = (game->game_h - game->ball_size) / 2;
+
+    // 공의 이동 방향 설정
+    game->ball_velocity_x = direction;
+    game->ball_velocity_y = 1;
+}
+
 // pong 게임 상태 갱신을 위한 내부 함수
 __attribute__((section(".usertext")))
 static void pong_update(PongState* game)
 {
+    // 패들의 x 좌표 (고정)
+    const int left_paddle_x = PADDLE_OFFSET_X;
+    const int right_paddle_x = game->game_w - (PADDLE_OFFSET_X + game->paddle_w);
+
     // 공의 현재 위치 갱신
     game->ball_curr_x += game->ball_velocity_x;
     game->ball_curr_y += game->ball_velocity_y;
 
-    // 천장 및 바닥에 충돌한 경우 y축 방향 반전
+    // 천장 충돌 감지
     if (game->ball_curr_y <= 0)
     {
         game->ball_curr_y = 0;
-        game->ball_velocity_y = -game->ball_velocity_y;
+        pong_reflect_ball(game, false, true);
     }
+    // 바닥 충돌 감지
     else if (game->ball_curr_y + game->ball_size >= game->game_h)
     {
         game->ball_curr_y = game->game_h - game->ball_size;
-        game->ball_velocity_y = -game->ball_velocity_y;
+        pong_reflect_ball(game, false, true);
     }
 
-    // 양쪽 벽에 충돌한 경우 x축 방향 반전 (Baseline 코드이므로 임시로 추가하였음)
-    if (game->ball_curr_x <= 0)
+    // 왼쪽 패들 충돌 감지
+    if (game->ball_velocity_x < 0 &&
+        pong_rects_overlap(
+            game->ball_curr_x, game->ball_curr_y, game->ball_size, game->ball_size,
+            left_paddle_x, game->left_paddle_y, game->paddle_w, game->paddle_h
+        ))
     {
-        game->ball_curr_x = 0;
+        game->ball_curr_x = left_paddle_x + game->paddle_w;
+        pong_reflect_ball(game, true, false);
+    }
+    // 오른쪽 패들 충돌 감지
+    else if (game->ball_velocity_x > 0 &&
+        pong_rects_overlap(
+            game->ball_curr_x, game->ball_curr_y, game->ball_size, game->ball_size,
+            right_paddle_x, game->right_paddle_y, game->paddle_w, game->paddle_h
+        ))
+    {
+        game->ball_curr_x = right_paddle_x - game->ball_size;
         game->ball_velocity_x = -game->ball_velocity_x;
     }
 
-    if (game->ball_curr_x + game->ball_size >= game->game_w)
+    // 왼쪽 패들을 지나치는 경우: 오른쪽 득점
+    // 현재는 점수 없이 공만 오른쪽 방향으로 리셋
+    if (game->ball_curr_x + game->ball_size < 0)
     {
-        game->ball_curr_x = game->game_w - game->ball_size;
-        game->ball_velocity_x = -game->ball_velocity_x;
+        pong_reset_ball(game, 1);
+    }
+
+    // 오른쪽 패들을 지나치는 경우: 왼쪽 득점
+    // 현재는 점수 없이 공만 왼쪽 방향으로 리셋
+    if (game->ball_curr_x > game->game_w)
+    {
+        pong_reset_ball(game, -1);
     }
 }
 
