@@ -16,6 +16,7 @@
 #include "../memory/paging.h"
 #include "../kernel/gdt.h"
 #include "../app/app_api.h"
+#include "../app/pong.h"
 #include "../kernel/game_window.h"
 
 // .usertext 섹션 심볼
@@ -242,62 +243,7 @@ void kernel_debug_puts(const char* s)
 __attribute__((section(".usertext"), noreturn))
 void user_test_main(void)
 {
-    // 시작 위치
-    int curr_x = 50, curr_y = 50;
-
-    // 시작 방향
-    int x_direction = 1, y_direction = 1;
-
-    const int ball_w = 5;
-    const int ball_h = 5;
-
-    uint32_t size = app_game_get_size();
-    uint16_t game_w = (uint16_t)(size & 0xFFFF);
-    uint16_t game_h = (uint16_t)(size >> 16);
-
-    for (;;)
-    {
-        // 게임 화면 초기화
-        app_game_clear(COLOR_BLACK);
-
-        // 현재 위치에 ball 렌더링
-        app_game_fill_rect(curr_x, curr_y, ball_w, ball_h, 10);
-
-        // 화면 렌더링
-        app_present();
-
-        // ball 위치 갱신
-        curr_x += x_direction;
-        curr_y += y_direction;
-
-        // ball의 x 좌표가 0 이하인 경우 x 방향 반전
-        if (curr_x <= 0)
-        {
-            curr_x = 0;
-            x_direction = 1;
-        }
-        // ball의 x 좌표가 게임 윈도우의 너비 이상인 경우 x 방향 반전
-        else if (curr_x + ball_w >= game_w)
-        {
-            curr_x = game_w - ball_w;
-            x_direction = -1;
-        }
-
-        // ball의 y 좌표가 0 이하인 경우 y 방향 반전
-        if (curr_y <= 0)
-        {
-            curr_y = 0;
-            y_direction = 1;
-        }
-        // ball의 y 좌표가 게임 윈도우의 높이 이상인 경우 y 방향 반전
-        else if (curr_y + ball_h >= game_h)
-        {
-            curr_y = game_h - ball_h;
-            y_direction = -1;
-        }
-
-        app_sleep(1);
-    }
+    pong_main();
 }
 
 void kernel_main(void)
