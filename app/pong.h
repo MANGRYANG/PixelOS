@@ -30,6 +30,10 @@ typedef struct PongState
 
     // 키 입력이 있을 때 패들이 한 번에 이동하는 픽셀 수
     int paddle_speed;
+
+    // player1, player2의 점수
+    int player1_score;
+    int player2_score;
 } PongState;
 
 // usertext 영역으로 선언

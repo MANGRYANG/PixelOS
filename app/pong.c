@@ -41,6 +41,9 @@ static void pong_init(PongState* game)
     // game 객체의 패들 y축 위치 정보 초기화 (중앙)
     game->left_paddle_y = (game->game_h - game->paddle_h) / 2;
     game->right_paddle_y = (game->game_h - game->paddle_h) / 2;
+
+    game->player1_score = 0;
+    game->player2_score = 0;
 }
 
 // pong 게임의 입력 관리를 위한 내부 함수
@@ -168,17 +171,44 @@ static void pong_update(PongState* game)
     }
 
     // 왼쪽 패들을 지나치는 경우: 오른쪽 득점
-    // 현재는 점수 없이 공만 오른쪽 방향으로 리셋
     if (game->ball_curr_x + game->ball_size < 0)
     {
+        if (game->player2_score < 10) {
+            game->player2_score++;
+        }
         pong_reset_ball(game, 1);
     }
 
     // 오른쪽 패들을 지나치는 경우: 왼쪽 득점
-    // 현재는 점수 없이 공만 왼쪽 방향으로 리셋
     if (game->ball_curr_x > game->game_w)
     {
+        if (game->player1_score < 10) {
+            game->player1_score++;
+        }
         pong_reset_ball(game, -1);
+    }
+}
+__attribute__((section(".usertext")))
+static void pong_score_to_text(int score, char* out)
+{
+    // 점수가 0 이하인 경우 0으로 고정
+    if (score < 0)
+    {
+        score = 0;
+    }
+
+    // 점수가 10 이상인 경우
+    if (score >= 10)
+    {
+        out[0] = '1';
+        out[1] = '0';
+        out[2] = '\0';
+    }
+    // 점수가 10 이하인 경우 (0-9)
+    else
+    {
+        out[0] = (char)('0' + score);
+        out[1] = '\0';
     }
 }
 
@@ -196,12 +226,24 @@ static void pong_render(PongState* game)
     }
 
     // 점수 UI 렌더링
-    char score_player_1[] = "0";
-    char score_player_2[] = "0";
+
+    // 점수를 문자열로 변환하여 저장
+    char score_player1[3];
+    char score_player2[3];
+    pong_score_to_text(game->player1_score, score_player1);
+    pong_score_to_text(game->player2_score, score_player2);
 
     // 중앙선을 기준으로 대칭이 되어 출력하도록 설정
-    app_game_draw_text(game->game_w / 2 - 20, 4, score_player_1, COLOR_WHITE);
-    app_game_draw_text(game->game_w / 2 + 13, 4, score_player_2, COLOR_WHITE);
+    // 한 자리 숫자일 경우, 중앙에서 (왼쪽으로 12 pixel + 글자 1개 너비(8) pixel) 띄운 위치에서 출력
+    // 두 자리 숫자일 경우, 중앙에서 (왼쪽으로 12 pixel + 글자 2개 너비(16) pixel) 띄운 위치에서 출력
+    app_game_draw_text(
+        (game->player1_score < 10) ? (game->game_w / 2 - 20) : (game->game_w / 2 - 28),
+        4,
+        score_player1,
+        COLOR_WHITE
+    );
+    // 중앙에서 오른쪽으로 13 pixel 띄워서 출력
+    app_game_draw_text(game->game_w / 2 + 13, 4, score_player2, COLOR_WHITE);
 
     // 패들 렌더링
     app_game_fill_rect(PADDLE_OFFSET_X, game->left_paddle_y, game->paddle_w, game->paddle_h, COLOR_WHITE);
