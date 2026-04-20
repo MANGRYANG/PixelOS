@@ -14,6 +14,12 @@
 
 #define BALL_SIZE 8
 
+#define SCORE_LIMIT 10
+
+#define PLAYER_NONE 0
+#define PLAYER_1 1
+#define PLAYER_2 2
+
 // pong 게임 초기화를 위한 내부 함수
 __attribute__((section(".usertext")))
 static void pong_init(PongState* game)
@@ -45,6 +51,11 @@ static void pong_init(PongState* game)
     game->player1_score = 0;
     game->player2_score = 0;
 
+    game->score_limit = SCORE_LIMIT;
+    // 게임 진행 : 0, 게임 오버: 1
+    game->game_over = 0;
+    game->winner = PLAYER_NONE;
+
     // 게임 진행: 0, 일시정지: 1
     game->paused = 0;
     game->space_was_down = 0;
@@ -54,6 +65,18 @@ static void pong_init(PongState* game)
 __attribute__((section(".usertext")))
 static void pong_handle_input(PongState* game)
 {
+    int restart_down = app_key_down(APP_KEY_RESTART);
+    
+    // 재시작 키 푸시
+    // R 키를 누르는 순간 한 번만 실행되도록 제어
+    // 게임 종료 시 R 키를 누르면 게임 재시작
+    if (game->game_over && restart_down && !game->restart_was_down)
+    {
+        pong_init(game);
+    }
+
+    game->restart_was_down = restart_down;
+
     int space_down = app_key_down(APP_KEY_SPACE);
 
     // 일시정지 상태 토글
@@ -150,8 +173,8 @@ static void pong_reset_ball(PongState* game, int direction)
 __attribute__((section(".usertext")))
 static void pong_update(PongState* game)
 {
-    // 게임이 일시정지 상태인 경우 업데이트하지 않음
-    if (game->paused)
+    // 게임이 일시정지 상태이거나 종료 상태인 경우 업데이트하지 않음
+    if (game->game_over || game->paused)
     {
         return;
     }
@@ -198,20 +221,31 @@ static void pong_update(PongState* game)
         game->ball_velocity_x = -game->ball_velocity_x;
     }
 
-    // 왼쪽 패들을 지나치는 경우: 오른쪽 득점
+    // 왼쪽 패들을 지나치는 경우: Player2 득점
     if (game->ball_curr_x + game->ball_size < 0)
     {
-        if (game->player2_score < 10) {
+        if (game->player2_score < SCORE_LIMIT)
+        {
             game->player2_score++;
+            if (game->player2_score >= SCORE_LIMIT)
+            {
+                game->game_over = 1;
+                game->winner = PLAYER_2;
+            }
         }
         pong_reset_ball(game, 1);
     }
 
-    // 오른쪽 패들을 지나치는 경우: 왼쪽 득점
+    // 오른쪽 패들을 지나치는 경우: Player1 득점
     if (game->ball_curr_x > game->game_w)
     {
-        if (game->player1_score < 10) {
+        if (game->player1_score < SCORE_LIMIT) {
             game->player1_score++;
+            if (game->player1_score >= SCORE_LIMIT)
+            {
+                game->game_over = 1;
+                game->winner = PLAYER_1;
+            }
         }
         pong_reset_ball(game, -1);
     }
@@ -225,11 +259,17 @@ static void pong_score_to_text(int score, char* out)
         score = 0;
     }
 
-    // 점수가 10 이상인 경우
+    // 점수가 99 이상인 경우 99로 고정
+    if (score > 99)
+    {
+        score = 99;
+    }
+
+    // 점수가 10 이상인 경우 (10-99)
     if (score >= 10)
     {
-        out[0] = '1';
-        out[1] = '0';
+        out[0] = (char)('0' + (score / 10));
+        out[1] = (char)('0' + (score % 10));
         out[2] = '\0';
     }
     // 점수가 10 이하인 경우 (0-9)
@@ -280,8 +320,31 @@ static void pong_render(PongState* game)
     // 공 렌더링
     app_game_fill_rect(game->ball_curr_x, game->ball_curr_y, game->ball_size, game->ball_size, COLOR_LIGHT_GREEN);
 
+    // 게임이 종료된 상태인 경우 Game Over 메시지와 승자 출력
+    if (game->game_over)
+    {
+        char winner_text[] = "WINNER";
+        char player1_win[] = "Player1";
+        char player2_win[] = "Player2";
+
+        int winner_text_w = 6 * 8;
+        int winner_text_h = 16;
+        int player_win_w = 7 * 8;
+        int player_win_h = 16;
+
+        int winner_text_x = (game->game_w - winner_text_w) / 2;
+        int winner_text_y = (game->game_h - winner_text_h) / 2 - 8;
+        int player_win_x = (game->game_w - player_win_w) / 2;
+        int player_win_y = (game->game_h - player_win_h) / 2 + 8;
+
+        // 텍스트 및 텍스트 배경 박스 출력
+        app_game_fill_rect(winner_text_x - 1, winner_text_y - 1, winner_text_w + 2, winner_text_h + player_win_h + 4, COLOR_BLACK);
+        app_game_draw_text(winner_text_x, winner_text_y, winner_text, COLOR_YELLOW);
+        app_game_draw_text(player_win_x, player_win_y, (game->winner == PLAYER_1) ? player1_win : player2_win, COLOR_YELLOW);
+    }
+
     // 게임이 일시정지 상태인 경우 Paused 메시지 출력
-    if (game->paused)
+    else if (game->paused)
     {
         char pause_text[] = "Paused";
 
