@@ -79,7 +79,7 @@ static void pong_handle_global_input(PongState* game)
     int space_down = app_key_down(APP_KEY_SPACE);
 
     // SPACE 키를 누르는 순간 한 번만 일시정지 상태 토글
-    if (space_down && !game->space_was_down)
+    if (!game->game_over && space_down && !game->space_was_down)
     {
         game->paused = !game->paused;
     }
