@@ -7,6 +7,7 @@
 #include "../graphics/graphics.h"
 #include "../graphics/color.h"
 #include "../font/font.h"
+#include "game_window.h"
 #include <stdint.h>
 
 // IDT 엔트리 구조체
@@ -227,6 +228,40 @@ TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0,
             // 현재 유저 태스크를 슬립 상태로 전환
             frame->eax = 0;
             return task_sleep_from_user(frame, arg0);
+        }
+
+        case SYS_GAME_CLEAR:
+        {
+            kernel_game_clear((uint8_t)arg0);
+            frame->eax = 0;
+            return frame;
+        }
+
+        case SYS_GAME_FILL_RECT:
+        {
+            uint16_t x = (uint16_t)(arg0 & 0xFFFF);
+            uint16_t y = (uint16_t)((arg0 >> 16) & 0xFFFF);
+            uint16_t w = (uint16_t)(arg1 & 0xFFFF);
+            uint16_t h = (uint16_t)((arg1 >> 16) & 0xFFFF);
+            uint8_t color = (uint8_t)arg2;
+
+            kernel_game_fill_rect(x, y, w, h, color);
+
+            frame->eax = 0;
+            return frame;
+        }
+
+        case SYS_PRESENT:
+        {
+            kernel_game_present();
+            frame->eax = 0;
+            return frame;
+        }
+
+        case SYS_GAME_GET_SIZE:
+        {
+            frame->eax = kernel_game_get_size();
+            return frame;
         }
 
         default:

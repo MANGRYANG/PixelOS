@@ -16,6 +16,8 @@
 #include "../memory/paging.h"
 #include "../kernel/gdt.h"
 #include "../app/app_api.h"
+#include "../app/pong.h"
+#include "../kernel/game_window.h"
 
 // .usertext 섹션 심볼
 extern uint8_t __user_text_start;
@@ -29,6 +31,9 @@ static Window* g_testwin = 0;
 
 // 드래그를 통해 이동할 윈도우
 static Window* g_dragwin = 0;
+
+// 게임 화면을 렌더링할 윈도우
+static Window* g_gamewin = 0;
 
 // 마우스로 클릭한 부분과 창의 좌상단의 오프셋
 static int g_drag_off_x = 0;
@@ -238,67 +243,7 @@ void kernel_debug_puts(const char* s)
 __attribute__((section(".usertext"), noreturn))
 void user_test_main(void)
 {
-    char idle_msg[] = "[RING3] idle";
-    char left_msg[] = "[RING3] left";
-    char right_msg[] = "[RING3] right";
-
-    uint32_t last_log_tick = 0;
-    uint32_t last_state = 0xFFFFFFFFu;
-
-    for (;;)
-    {
-        uint32_t state;
-
-        // A scancode: 0x1E, B scancode: 0x20
-        if (app_key_down(0x1E) == app_key_down(0x20))
-        {
-            state = 0;
-        }
-
-        // A 키다운
-        else if (app_key_down(0x1E))
-        {
-            state = 1;
-        }
-
-        // D 키다운
-        else
-        {
-            state = 2;
-        }
-
-        uint32_t now = app_get_ticks();
-
-        // 상태가 바뀌었거나, 50 Tick 이상 지났을 때만 출력
-        if (state != last_state || (now - last_log_tick) >= 50u)
-        {
-            last_state = state;
-            last_log_tick = now;
-
-            switch (state)
-            {
-                case 1:
-                {
-                    app_debug_puts(left_msg);
-                    break;
-                }
-
-                case 2:
-                {
-                    app_debug_puts(right_msg);
-                    break;
-                }
-                    
-                default:
-                {
-                    app_debug_puts(idle_msg);
-                    break;
-                }
-            }
-        }
-
-        app_sleep(1);
-    }
+    pong_main();
 }
 
 void kernel_main(void)
@@ -340,8 +285,7 @@ void kernel_main(void)
 
     // 테스트용 window 생성
     g_testwin = wm_create_window(50, 50, 200, 140, COLOR_WHITE, COLOR_BLUE, "TEST");
-
-    wm_create_window(150, 70, 200, 140, COLOR_WHITE, COLOR_BLUE, "HIT");
+    g_gamewin = kernel_game_init();
 
     int mx = get_mouse_x();
     int my = get_mouse_y();

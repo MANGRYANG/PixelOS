@@ -16,6 +16,7 @@ MOUSE_DIR = mouse
 GRAPHICS_DIR = graphics
 WINDOW_DIR = window
 MEMORY_DIR = memory
+APP_DIR = app
 
 KERNEL_OBJS = \
 	$(BUILD_DIR)/kernel_entry.o \
@@ -38,7 +39,9 @@ KERNEL_OBJS = \
 	$(BUILD_DIR)/compositor.o \
 	$(BUILD_DIR)/flush_gdt.o \
 	$(BUILD_DIR)/gdt.o \
-	$(BUILD_DIR)/user_mode.o
+	$(BUILD_DIR)/user_mode.o \
+	$(BUILD_DIR)/game_window.o \
+	$(BUILD_DIR)/pong.o
 
 CFLAGS = -m32 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib -fno-pic
 ASFLAGS_BIN = -f bin
@@ -63,6 +66,7 @@ $(eval $(call COMPILE_C_TEMPLATE,$(KEYBOARD_DIR)))
 $(eval $(call COMPILE_C_TEMPLATE,$(MOUSE_DIR)))
 $(eval $(call COMPILE_C_TEMPLATE,$(GRAPHICS_DIR)))
 $(eval $(call COMPILE_C_TEMPLATE,$(WINDOW_DIR)))
+$(eval $(call COMPILE_C_TEMPLATE,$(APP_DIR)))
 
 $(eval $(call COMPILE_ASM_ELF_TEMPLATE,$(KERNEL_DIR)))
 
