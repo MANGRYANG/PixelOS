@@ -4,7 +4,7 @@
 #include "../window/window.h"
 
 // 게임 윈도우 생성 함수
-Window* kernel_game_init(void);
+void kernel_game_init(void);
 
 // 게임 렌더링 관련 헬퍼
 void kernel_game_clear(uint8_t color);

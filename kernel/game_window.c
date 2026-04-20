@@ -10,11 +10,9 @@ static Window* g_gamewin = 0;
 #define GAME_TITLE_HEIGHT (FONT_HEIGHT + 2)
 
 // 게임 윈도우 생성 함수
-Window* kernel_game_init(void)
+void kernel_game_init(void)
 {
     g_gamewin = wm_create_window(80, 30, 220, 150, COLOR_BLACK, COLOR_BLUE, "GAME");
-
-    return g_gamewin;
 }
 
 void kernel_game_clear(uint8_t color)
