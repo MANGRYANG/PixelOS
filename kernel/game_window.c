@@ -83,6 +83,44 @@ void kernel_game_fill_rect(int x, int y, int w, int h, uint8_t color)
     }
 }
 
+void kernel_game_draw_text(int x, int y, const char* text, uint8_t color)
+{
+    if (!g_gamewin || !g_gamewin->in_use || !text)
+    {
+        return;
+    }
+
+    // 게임 렌더링 구역의 좌표로 변경
+    const int origin_x = 1;
+    const int origin_y = GAME_TITLE_HEIGHT + 1;
+
+    const int clip_x0 = 1;
+    const int clip_y0 = GAME_TITLE_HEIGHT + 1;
+    const int clip_x1 = g_gamewin->width - 1;
+    const int clip_y1 = g_gamewin->height - 1;
+
+    int draw_x = origin_x + x;
+    int draw_y = origin_y + y;
+
+    if (draw_y < clip_y0 || draw_y + FONT_HEIGHT > clip_y1)
+    {
+        return;
+    }
+
+    // user pointer가 잘못되었을 때 무한히 읽지 않도록 10글자로 제한
+    char buf[10];
+    
+    int i = 0;
+    while (i < 10 && text[i] != '\0')
+    {
+        buf[i] = text[i];
+        ++i;
+    }
+    buf[i] = '\0';
+
+    window_draw_string(g_gamewin, draw_x, draw_y, buf, color);
+}
+
 void kernel_game_present(void)
 {
     compositor_compose();

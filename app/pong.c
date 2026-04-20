@@ -14,6 +14,12 @@
 
 #define BALL_SIZE 8
 
+#define SCORE_LIMIT 10
+
+#define PLAYER_NONE 0
+#define PLAYER_1 1
+#define PLAYER_2 2
+
 // pong 게임 초기화를 위한 내부 함수
 __attribute__((section(".usertext")))
 static void pong_init(PongState* game)
@@ -41,12 +47,54 @@ static void pong_init(PongState* game)
     // game 객체의 패들 y축 위치 정보 초기화 (중앙)
     game->left_paddle_y = (game->game_h - game->paddle_h) / 2;
     game->right_paddle_y = (game->game_h - game->paddle_h) / 2;
+
+    game->player1_score = 0;
+    game->player2_score = 0;
+
+    game->score_limit = SCORE_LIMIT;
+    // 게임 진행 : 0, 게임 오버: 1
+    game->game_over = 0;
+    game->winner = PLAYER_NONE;
+
+    // 게임 진행: 0, 일시정지: 1
+    game->paused = 0;
+    game->space_was_down = 0;
 }
 
 // pong 게임의 입력 관리를 위한 내부 함수
 __attribute__((section(".usertext")))
 static void pong_handle_input(PongState* game)
 {
+    int restart_down = app_key_down(APP_KEY_RESTART);
+    
+    // 재시작 키 푸시
+    // R 키를 누르는 순간 한 번만 실행되도록 제어
+    // 게임 종료 시 R 키를 누르면 게임 재시작
+    if (game->game_over && restart_down && !game->restart_was_down)
+    {
+        pong_init(game);
+    }
+
+    game->restart_was_down = restart_down;
+
+    int space_down = app_key_down(APP_KEY_SPACE);
+
+    // 일시정지 상태 토글
+    // SPACE 키를 누르는 순간 한 번만 실행되도록 제어
+    if (space_down && !game->space_was_down)
+    {
+        game->paused = !game->paused;
+    }
+
+    // space_was_down 갱신
+    game->space_was_down = space_down;
+
+    // 게임이 일시정지 상태인 경우 다른 키 입력 무시
+    if (game->paused)
+    {
+        return;
+    }
+
     // Player 1: W/S 키로 왼쪽 패들 조작
     if (app_key_down(APP_KEY_W))
     {
@@ -125,6 +173,12 @@ static void pong_reset_ball(PongState* game, int direction)
 __attribute__((section(".usertext")))
 static void pong_update(PongState* game)
 {
+    // 게임이 일시정지 상태이거나 종료 상태인 경우 업데이트하지 않음
+    if (game->game_over || game->paused)
+    {
+        return;
+    }
+
     // 패들의 x 좌표 (고정)
     const int left_paddle_x = PADDLE_OFFSET_X;
     const int right_paddle_x = game->game_w - (PADDLE_OFFSET_X + game->paddle_w);
@@ -167,18 +221,62 @@ static void pong_update(PongState* game)
         game->ball_velocity_x = -game->ball_velocity_x;
     }
 
-    // 왼쪽 패들을 지나치는 경우: 오른쪽 득점
-    // 현재는 점수 없이 공만 오른쪽 방향으로 리셋
+    // 왼쪽 패들을 지나치는 경우: Player2 득점
     if (game->ball_curr_x + game->ball_size < 0)
     {
+        if (game->player2_score < SCORE_LIMIT)
+        {
+            game->player2_score++;
+            if (game->player2_score >= SCORE_LIMIT)
+            {
+                game->game_over = 1;
+                game->winner = PLAYER_2;
+            }
+        }
         pong_reset_ball(game, 1);
     }
 
-    // 오른쪽 패들을 지나치는 경우: 왼쪽 득점
-    // 현재는 점수 없이 공만 왼쪽 방향으로 리셋
+    // 오른쪽 패들을 지나치는 경우: Player1 득점
     if (game->ball_curr_x > game->game_w)
     {
+        if (game->player1_score < SCORE_LIMIT) {
+            game->player1_score++;
+            if (game->player1_score >= SCORE_LIMIT)
+            {
+                game->game_over = 1;
+                game->winner = PLAYER_1;
+            }
+        }
         pong_reset_ball(game, -1);
+    }
+}
+__attribute__((section(".usertext")))
+static void pong_score_to_text(int score, char* out)
+{
+    // 점수가 0 이하인 경우 0으로 고정
+    if (score < 0)
+    {
+        score = 0;
+    }
+
+    // 점수가 99 이상인 경우 99로 고정
+    if (score > 99)
+    {
+        score = 99;
+    }
+
+    // 점수가 10 이상인 경우 (10-99)
+    if (score >= 10)
+    {
+        out[0] = (char)('0' + (score / 10));
+        out[1] = (char)('0' + (score % 10));
+        out[2] = '\0';
+    }
+    // 점수가 10 이하인 경우 (0-9)
+    else
+    {
+        out[0] = (char)('0' + score);
+        out[1] = '\0';
     }
 }
 
@@ -195,12 +293,71 @@ static void pong_render(PongState* game)
         app_game_fill_rect(center_x, i, CENTER_LINE_WIDTH, CENTER_LINE_HEIGHT, COLOR_LIGHT_GRAY);
     }
 
+    // 점수 UI 렌더링
+
+    // 점수를 문자열로 변환하여 저장
+    char score_player1[3];
+    char score_player2[3];
+    pong_score_to_text(game->player1_score, score_player1);
+    pong_score_to_text(game->player2_score, score_player2);
+
+    // 중앙선을 기준으로 대칭이 되어 출력하도록 설정
+    // 한 자리 숫자일 경우, 중앙에서 (왼쪽으로 12 pixel + 글자 1개 너비(8) pixel) 띄운 위치에서 출력
+    // 두 자리 숫자일 경우, 중앙에서 (왼쪽으로 12 pixel + 글자 2개 너비(16) pixel) 띄운 위치에서 출력
+    app_game_draw_text(
+        (game->player1_score < 10) ? (game->game_w / 2 - 20) : (game->game_w / 2 - 28),
+        4,
+        score_player1,
+        COLOR_WHITE
+    );
+    // 중앙에서 오른쪽으로 13 pixel 띄워서 출력
+    app_game_draw_text(game->game_w / 2 + 13, 4, score_player2, COLOR_WHITE);
+
     // 패들 렌더링
     app_game_fill_rect(PADDLE_OFFSET_X, game->left_paddle_y, game->paddle_w, game->paddle_h, COLOR_WHITE);
     app_game_fill_rect(game->game_w - (PADDLE_OFFSET_X + game->paddle_w), game->right_paddle_y, game->paddle_w, game->paddle_h, COLOR_WHITE);
 
     // 공 렌더링
     app_game_fill_rect(game->ball_curr_x, game->ball_curr_y, game->ball_size, game->ball_size, COLOR_LIGHT_GREEN);
+
+    // 게임이 종료된 상태인 경우 Game Over 메시지와 승자 출력
+    if (game->game_over)
+    {
+        char winner_text[] = "WINNER";
+        char player1_win[] = "Player1";
+        char player2_win[] = "Player2";
+
+        int winner_text_w = 6 * 8;
+        int winner_text_h = 16;
+        int player_win_w = 7 * 8;
+        int player_win_h = 16;
+
+        int winner_text_x = (game->game_w - winner_text_w) / 2;
+        int winner_text_y = (game->game_h - winner_text_h) / 2 - 8;
+        int player_win_x = (game->game_w - player_win_w) / 2;
+        int player_win_y = (game->game_h - player_win_h) / 2 + 8;
+
+        // 텍스트 및 텍스트 배경 박스 출력
+        app_game_fill_rect(winner_text_x - 1, winner_text_y - 1, winner_text_w + 2, winner_text_h + player_win_h + 4, COLOR_BLACK);
+        app_game_draw_text(winner_text_x, winner_text_y, winner_text, COLOR_YELLOW);
+        app_game_draw_text(player_win_x, player_win_y, (game->winner == PLAYER_1) ? player1_win : player2_win, COLOR_YELLOW);
+    }
+
+    // 게임이 일시정지 상태인 경우 Paused 메시지 출력
+    else if (game->paused)
+    {
+        char pause_text[] = "Paused";
+
+        int pause_text_w = 6 * 8;
+        int pause_text_h = 16;
+
+        int pause_text_x = (game->game_w - pause_text_w) / 2;
+        int pause_text_y = (game->game_h - pause_text_h) / 2;
+
+        // 텍스트 및 텍스트 배경 박스 출력
+        app_game_fill_rect(pause_text_x - 1, pause_text_y - 1, pause_text_w + 2, pause_text_h + 2, COLOR_BLACK);
+        app_game_draw_text(pause_text_x, pause_text_y, pause_text, COLOR_WHITE);
+    }
 
     // 화면 합성
     app_present();

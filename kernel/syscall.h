@@ -12,5 +12,6 @@ typedef enum SyscallNum
     SYS_GAME_CLEAR      = 6,
     SYS_GAME_FILL_RECT  = 7,
     SYS_PRESENT         = 8,
-    SYS_GAME_GET_SIZE   = 9
+    SYS_GAME_GET_SIZE   = 9,
+    SYS_GAME_DRAW_TEXT  = 10
 } SyscallNum;
