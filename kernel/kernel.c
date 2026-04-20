@@ -32,9 +32,6 @@ static Window* g_testwin = 0;
 // 드래그를 통해 이동할 윈도우
 static Window* g_dragwin = 0;
 
-// 게임 화면을 렌더링할 윈도우
-static Window* g_gamewin = 0;
-
 // 마우스로 클릭한 부분과 창의 좌상단의 오프셋
 static int g_drag_off_x = 0;
 static int g_drag_off_y = 0;
@@ -285,7 +282,7 @@ void kernel_main(void)
 
     // 테스트용 window 생성
     g_testwin = wm_create_window(50, 50, 200, 140, COLOR_WHITE, COLOR_BLUE, "TEST");
-    g_gamewin = kernel_game_init();
+    kernel_game_init();
 
     int mx = get_mouse_x();
     int my = get_mouse_y();

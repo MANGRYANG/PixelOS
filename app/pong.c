@@ -61,26 +61,24 @@ static void pong_init(PongState* game)
     game->space_was_down = 0;
 }
 
-// pong 게임의 입력 관리를 위한 내부 함수
+// pong 게임의 전역 입력 관리를 위한 내부 함수 (일시정지, 재시작)
 __attribute__((section(".usertext")))
-static void pong_handle_input(PongState* game)
+static void pong_handle_global_input(PongState* game)
 {
     int restart_down = app_key_down(APP_KEY_RESTART);
     
-    // 재시작 키 푸시
-    // R 키를 누르는 순간 한 번만 실행되도록 제어
-    // 게임 종료 시 R 키를 누르면 게임 재시작
+    // 게임 종료 시 R 키를 누르는 순간 한 번만 재시작
     if (game->game_over && restart_down && !game->restart_was_down)
     {
         pong_init(game);
+        return;
     }
 
     game->restart_was_down = restart_down;
 
     int space_down = app_key_down(APP_KEY_SPACE);
 
-    // 일시정지 상태 토글
-    // SPACE 키를 누르는 순간 한 번만 실행되도록 제어
+    // SPACE 키를 누르는 순간 한 번만 일시정지 상태 토글
     if (space_down && !game->space_was_down)
     {
         game->paused = !game->paused;
@@ -88,9 +86,14 @@ static void pong_handle_input(PongState* game)
 
     // space_was_down 갱신
     game->space_was_down = space_down;
+}
 
-    // 게임이 일시정지 상태인 경우 다른 키 입력 무시
-    if (game->paused)
+// pong 게임의 패들 조작을 위한 입력 관리를 위한 내부 함수
+__attribute__((section(".usertext")))
+static void pong_handle_paddle_input(PongState* game)
+{
+    // 일시정지, 게임 종료 상태인 경우 패들 조작 불가 처리
+    if (game->paused || game->game_over)
     {
         return;
     }
@@ -138,6 +141,14 @@ static void pong_handle_input(PongState* game)
     }
 }
 
+// pong 게임의 입력 관리를 위한 내부 함수
+__attribute__((section(".usertext")))
+static void pong_handle_input(PongState* game)
+{
+    pong_handle_global_input(game);
+    pong_handle_paddle_input(game);
+}
+
 // 두 사각형의 충돌 여부를 확인하는 내부 함수
 __attribute__((section(".usertext")))
 static int pong_rects_overlap(
@@ -167,6 +178,46 @@ static void pong_reset_ball(PongState* game, int direction)
     // 공의 이동 방향 설정
     game->ball_velocity_x = direction;
     game->ball_velocity_y = 1;
+}
+
+// 득점 처리를 위한 내부 함수
+__attribute__((section(".usertext")))
+static void pong_score_point(PongState* game, int player)
+{
+    if (player == PLAYER_1)
+    {
+        if (game->player1_score < game->score_limit)
+        {
+            game->player1_score++;
+        }
+
+        if (game->player1_score >= game->score_limit)
+        {
+            game->game_over = 1;
+            game->winner = PLAYER_1;
+            return;
+        }
+
+        // Player1이 득점한 경우 공은 Player2 방향으로 다시 시작
+        pong_reset_ball(game, -1);
+    }
+    else if (player == PLAYER_2)
+    {
+        if (game->player2_score < game->score_limit)
+        {
+            game->player2_score++;
+        }
+
+        if (game->player2_score >= game->score_limit)
+        {
+            game->game_over = 1;
+            game->winner = PLAYER_2;
+            return;
+        }
+
+        // Player2가 득점한 경우 공은 Player1 방향으로 다시 시작
+        pong_reset_ball(game, 1);
+    }
 }
 
 // pong 게임 상태 갱신을 위한 내부 함수
@@ -218,38 +269,24 @@ static void pong_update(PongState* game)
         ))
     {
         game->ball_curr_x = right_paddle_x - game->ball_size;
-        game->ball_velocity_x = -game->ball_velocity_x;
+        pong_reflect_ball(game, true, false);
     }
 
     // 왼쪽 패들을 지나치는 경우: Player2 득점
     if (game->ball_curr_x + game->ball_size < 0)
     {
-        if (game->player2_score < SCORE_LIMIT)
-        {
-            game->player2_score++;
-            if (game->player2_score >= SCORE_LIMIT)
-            {
-                game->game_over = 1;
-                game->winner = PLAYER_2;
-            }
-        }
-        pong_reset_ball(game, 1);
+        pong_score_point(game, PLAYER_2);
+        return;
     }
 
     // 오른쪽 패들을 지나치는 경우: Player1 득점
-    if (game->ball_curr_x > game->game_w)
+    else if (game->ball_curr_x > game->game_w)
     {
-        if (game->player1_score < SCORE_LIMIT) {
-            game->player1_score++;
-            if (game->player1_score >= SCORE_LIMIT)
-            {
-                game->game_over = 1;
-                game->winner = PLAYER_1;
-            }
-        }
-        pong_reset_ball(game, -1);
+        pong_score_point(game, PLAYER_1);
+        return;
     }
 }
+
 __attribute__((section(".usertext")))
 static void pong_score_to_text(int score, char* out)
 {
@@ -281,20 +318,18 @@ static void pong_score_to_text(int score, char* out)
 }
 
 __attribute__((section(".usertext")))
-static void pong_render(PongState* game)
+static void pong_render_center_line(PongState* game)
 {
-    // 게임 화면 초기화
-    app_game_clear(COLOR_BLACK);
-
-    // 중앙 선 렌더링
     int center_x = (game->game_w - CENTER_LINE_WIDTH) / 2;
     for (int i = 0; i < game->game_h; i += (CENTER_LINE_HEIGHT + CENTER_LINE_GAP))
     {
         app_game_fill_rect(center_x, i, CENTER_LINE_WIDTH, CENTER_LINE_HEIGHT, COLOR_LIGHT_GRAY);
     }
+}
 
-    // 점수 UI 렌더링
-
+__attribute__((section(".usertext")))
+static void pong_render_score(PongState* game)
+{
     // 점수를 문자열로 변환하여 저장
     char score_player1[3];
     char score_player2[3];
@@ -312,14 +347,24 @@ static void pong_render(PongState* game)
     );
     // 중앙에서 오른쪽으로 13 pixel 띄워서 출력
     app_game_draw_text(game->game_w / 2 + 13, 4, score_player2, COLOR_WHITE);
+}
 
-    // 패들 렌더링
+__attribute__((section(".usertext")))
+static void pong_render_paddles(PongState* game)
+{
     app_game_fill_rect(PADDLE_OFFSET_X, game->left_paddle_y, game->paddle_w, game->paddle_h, COLOR_WHITE);
     app_game_fill_rect(game->game_w - (PADDLE_OFFSET_X + game->paddle_w), game->right_paddle_y, game->paddle_w, game->paddle_h, COLOR_WHITE);
+}
 
-    // 공 렌더링
+__attribute__((section(".usertext")))
+static void pong_render_ball(PongState* game)
+{
     app_game_fill_rect(game->ball_curr_x, game->ball_curr_y, game->ball_size, game->ball_size, COLOR_LIGHT_GREEN);
+}
 
+__attribute__((section(".usertext")))
+static void pong_render_overlay(PongState* game)
+{
     // 게임이 종료된 상태인 경우 Game Over 메시지와 승자 출력
     if (game->game_over)
     {
@@ -358,6 +403,28 @@ static void pong_render(PongState* game)
         app_game_fill_rect(pause_text_x - 1, pause_text_y - 1, pause_text_w + 2, pause_text_h + 2, COLOR_BLACK);
         app_game_draw_text(pause_text_x, pause_text_y, pause_text, COLOR_WHITE);
     }
+}
+
+__attribute__((section(".usertext")))
+static void pong_render(PongState* game)
+{
+    // 게임 화면 초기화
+    app_game_clear(COLOR_BLACK);
+
+    // 중앙 선 렌더링
+    pong_render_center_line(game);
+
+    // 점수 UI 렌더링
+    pong_render_score(game);
+
+    // 패들 렌더링
+    pong_render_paddles(game);
+    
+    // 공 렌더링
+    pong_render_ball(game);
+
+    // 오버레이 렌더링
+    pong_render_overlay(game);
 
     // 화면 합성
     app_present();
