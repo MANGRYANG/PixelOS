@@ -71,6 +71,7 @@ static void pong_handle_global_input(PongState* game)
     if (game->game_over && restart_down && !game->restart_was_down)
     {
         pong_init(game);
+        return;
     }
 
     game->restart_was_down = restart_down;
