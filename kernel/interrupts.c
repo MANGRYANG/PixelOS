@@ -188,9 +188,6 @@ extern void kernel_debug_puts(const char* s);
 // asm 코드에서 호출되는 시스템 콜 핸들러 정의
 TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
-    (void)arg1;
-    (void)arg2;
-
     switch(syscall_no)
     {
         case SYS_DEBUG_PUTS:
@@ -261,6 +258,20 @@ TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0,
         case SYS_GAME_GET_SIZE:
         {
             frame->eax = kernel_game_get_size();
+            return frame;
+        }
+
+        case SYS_GAME_DRAW_TEXT:
+        {
+            uint16_t x = (uint16_t)(arg0 & 0xFFFF);
+            uint16_t y = (uint16_t)((arg0 >> 16) & 0xFFFF);
+
+            uint8_t color = (uint8_t)(arg1 & 0xFF);
+            const char* text = (const char*)arg2;
+
+            kernel_game_draw_text(x, y, text, color);
+
+            frame->eax = 0;
             return frame;
         }
 

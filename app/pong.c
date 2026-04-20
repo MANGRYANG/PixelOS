@@ -195,6 +195,14 @@ static void pong_render(PongState* game)
         app_game_fill_rect(center_x, i, CENTER_LINE_WIDTH, CENTER_LINE_HEIGHT, COLOR_LIGHT_GRAY);
     }
 
+    // 점수 UI 렌더링
+    char score_player_1[] = "0";
+    char score_player_2[] = "0";
+
+    // 중앙선을 기준으로 대칭이 되어 출력하도록 설정
+    app_game_draw_text(game->game_w / 2 - 20, 4, score_player_1, COLOR_WHITE);
+    app_game_draw_text(game->game_w / 2 + 13, 4, score_player_2, COLOR_WHITE);
+
     // 패들 렌더링
     app_game_fill_rect(PADDLE_OFFSET_X, game->left_paddle_y, game->paddle_w, game->paddle_h, COLOR_WHITE);
     app_game_fill_rect(game->game_w - (PADDLE_OFFSET_X + game->paddle_w), game->right_paddle_y, game->paddle_w, game->paddle_h, COLOR_WHITE);

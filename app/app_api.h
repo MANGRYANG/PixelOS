@@ -77,13 +77,7 @@ static inline void app_game_clear(uint8_t color)
 }
 
 __attribute__((section(".usertext"), always_inline))
-static inline void app_game_fill_rect(
-    uint16_t x,
-    uint16_t y,
-    uint16_t w,
-    uint16_t h,
-    uint8_t color
-)
+static inline void app_game_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t color)
 {
     uint32_t pos = ((uint32_t)y << 16) | x;
     uint32_t size = ((uint32_t)h << 16) | w;
@@ -120,4 +114,17 @@ static inline uint32_t app_game_get_size(void)
     );
 
     return ret;
+}
+
+__attribute__((section(".usertext"), always_inline))
+static inline void app_game_draw_text(uint16_t x, uint16_t y, const char* text, uint8_t color)
+{
+    uint32_t pos = ((uint32_t)y << 16) | x;
+
+    __asm__ volatile (
+        "int $0x80"
+        :
+        : "a"(SYS_GAME_DRAW_TEXT), "c"(pos), "d"((uint32_t)color), "b"((uint32_t)text)
+        : "memory"
+    );
 }
