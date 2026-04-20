@@ -91,6 +91,12 @@ static void pong_handle_global_input(PongState* game)
 __attribute__((section(".usertext")))
 static void pong_handle_paddle_input(PongState* game)
 {
+    // 일시정지, 게임 종료 상태인 경우 패들 조작 불가 처리
+    if (game->paused || game->game_over)
+    {
+        return;
+    }
+
     // Player 1: W/S 키로 왼쪽 패들 조작
     if (app_key_down(APP_KEY_W))
     {
