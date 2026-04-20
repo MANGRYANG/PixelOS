@@ -34,6 +34,11 @@ typedef struct PongState
     // player1, player2의 점수
     int player1_score;
     int player2_score;
+
+    // 게임 일시정지 상태를 저장하는 멤버
+    int paused;
+    // 이전 프레임에 일시정지 키(SPACE)가 눌려 있었는지 확인하기 위한 멤버
+    int space_was_down;
 } PongState;
 
 // usertext 영역으로 선언

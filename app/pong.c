@@ -44,12 +44,34 @@ static void pong_init(PongState* game)
 
     game->player1_score = 0;
     game->player2_score = 0;
+
+    // 게임 진행: 0, 일시정지: 1
+    game->paused = 0;
+    game->space_was_down = 0;
 }
 
 // pong 게임의 입력 관리를 위한 내부 함수
 __attribute__((section(".usertext")))
 static void pong_handle_input(PongState* game)
 {
+    int space_down = app_key_down(APP_KEY_SPACE);
+
+    // 일시정지 상태 토글
+    // SPACE 키를 누르는 순간 한 번만 실행되도록 제어
+    if (space_down && !game->space_was_down)
+    {
+        game->paused = !game->paused;
+    }
+
+    // space_was_down 갱신
+    game->space_was_down = space_down;
+
+    // 게임이 일시정지 상태인 경우 다른 키 입력 무시
+    if (game->paused)
+    {
+        return;
+    }
+
     // Player 1: W/S 키로 왼쪽 패들 조작
     if (app_key_down(APP_KEY_W))
     {
@@ -128,6 +150,12 @@ static void pong_reset_ball(PongState* game, int direction)
 __attribute__((section(".usertext")))
 static void pong_update(PongState* game)
 {
+    // 게임이 일시정지 상태인 경우 업데이트하지 않음
+    if (game->paused)
+    {
+        return;
+    }
+
     // 패들의 x 좌표 (고정)
     const int left_paddle_x = PADDLE_OFFSET_X;
     const int right_paddle_x = game->game_w - (PADDLE_OFFSET_X + game->paddle_w);
@@ -251,6 +279,22 @@ static void pong_render(PongState* game)
 
     // 공 렌더링
     app_game_fill_rect(game->ball_curr_x, game->ball_curr_y, game->ball_size, game->ball_size, COLOR_LIGHT_GREEN);
+
+    // 게임이 일시정지 상태인 경우 Paused 메시지 출력
+    if (game->paused)
+    {
+        char pause_text[] = "Paused";
+
+        int pause_text_w = 6 * 8;
+        int pause_text_h = 16;
+
+        int pause_text_x = (game->game_w - pause_text_w) / 2;
+        int pause_text_y = (game->game_h - pause_text_h) / 2;
+
+        // 텍스트 및 텍스트 배경 박스 출력
+        app_game_fill_rect(pause_text_x - 1, pause_text_y - 1, pause_text_w + 2, pause_text_h + 2, COLOR_BLACK);
+        app_game_draw_text(pause_text_x, pause_text_y, pause_text, COLOR_WHITE);
+    }
 
     // 화면 합성
     app_present();
