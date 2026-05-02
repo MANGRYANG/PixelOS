@@ -20,6 +20,8 @@
 #define PLAYER_1 1
 #define PLAYER_2 2
 
+#define PONG_FRAME_TICKS 1u
+
 // pong 게임 초기화를 위한 내부 함수
 __attribute__((section(".usertext")))
 static void pong_init(PongState* game)
@@ -439,9 +441,25 @@ void pong_main(void)
     // pong 게임 초기화
     pong_init(&game);
 
+    // 마지막으로 frame을 처리한 tick
+    uint32_t last_frame_tick = app_get_ticks();
+
     // 게임 루프
     for (;;)
     {
+        uint32_t now = app_get_ticks();
+
+        // 아직 다음 frame을 처리할 tick이 되지 않았다면 CPU를 양보
+        if ((uint32_t)(now - last_frame_tick) < PONG_FRAME_TICKS)
+        {
+            app_sleep(1);
+            continue;
+        }
+
+        // 지연이 누적되었을 때 여러 frame을 몰아서 처리하지 않고,
+        // 현재 tick 기준으로 다음 frame을 진행
+        last_frame_tick = now;
+
         pong_handle_input(&game);
         pong_update(&game);
         pong_render(&game);
