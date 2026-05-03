@@ -197,7 +197,7 @@ static void app_task(void* arg)
     }
 }
 
-void kernel_debug_puts(const char* s)
+void kernel_debug_puts(const char* s, uint32_t line)
 {
     if (!g_testwin || !g_testwin->in_use || !s)
     {
@@ -206,7 +206,7 @@ void kernel_debug_puts(const char* s)
 
     // TEST 창의 첫 번째 텍스트 줄 영역
     const int text_x = 4;
-    const int text_y = FONT_HEIGHT + 4;
+    const int text_y = (FONT_HEIGHT + 4) + (line * FONT_HEIGHT);
     const int line_w = g_testwin->width - 8;
     const int line_h = FONT_HEIGHT;
 
