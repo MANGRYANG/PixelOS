@@ -314,6 +314,9 @@ static void syscall_metric_report(void)
     p_2 = append_str(p_2, "[M] B");
     p_2 = append_u32(p_2, g_syscall_metric_counts[SYS_GAME_FILL_RECTS_BATCH]);
 
+    // 널 종료 문자(\0) 추가
+    *p_2 = 0;
+
     // 시스템 콜 Metric count 출력
     kernel_debug_puts(buf_0, 0);
     kernel_debug_puts(buf_1, 1);
