@@ -315,6 +315,31 @@ static void syscall_metric_report(void)
     g_syscall_metric_last_tick = now;
 }
 
+extern uint8_t __user_data_start;
+extern uint8_t __user_data_end;
+
+// 포인터가 userdata 섹션 범위 안의 유효한 메모리 구간을 가리키는지 확인하는 함수
+static int syscall_ptr_in_userdata(uint32_t ptr, uint32_t bytes)
+{
+    uint32_t start = (uint32_t)&__user_data_start;
+    uint32_t end = (uint32_t)&__user_data_end;
+
+    // 포인터가 userdata 섹션 범위를 벗어나는 경우 실패 처리
+    if (ptr < start || ptr > end)
+    {
+        return 0;
+    }
+
+    // 요청한 바이트 수가 userdata 섹션을 넘어가면 실패 처리
+    if (bytes > end - ptr)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+
 // asm 코드에서 호출되는 시스템 콜 핸들러 정의
 TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
@@ -376,6 +401,29 @@ TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0,
             uint8_t color = (uint8_t)arg2;
 
             kernel_game_fill_rect(x, y, w, h, color);
+
+            frame->eax = 0;
+            return frame;
+        }
+
+        case SYS_GAME_FILL_RECTS_BATCH:
+        {
+            const SyscallRect* rects = (const SyscallRect*)arg0;
+            uint32_t count = arg1;
+            uint8_t color = (uint8_t)arg2;
+
+            if (count > 20u)
+            {
+                count = 20u;
+            }
+
+            if (!syscall_ptr_in_userdata(arg0, count * sizeof(SyscallRect)))
+            {
+                frame->eax = (uint32_t)-1;
+                return frame;
+            }
+
+            kernel_game_fill_rects_batch(rects, count, color);
 
             frame->eax = 0;
             return frame;

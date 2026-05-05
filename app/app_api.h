@@ -91,6 +91,21 @@ static inline void app_game_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16
 }
 
 __attribute__((section(".usertext"), always_inline))
+static inline int app_game_fill_rects_batch(const SyscallRect* rects, int count, uint8_t color)
+{
+    uint32_t ret;
+
+    __asm__ volatile(
+        "int $0x80"
+        :
+        : "a"(SYS_GAME_FILL_RECTS_BATCH), "c"(rects), "d"(count), "b"(color)
+        : "memory"
+    );
+
+    return (int)ret;
+}
+
+__attribute__((section(".usertext"), always_inline))
 static inline void app_present(void)
 {
     __asm__ volatile (

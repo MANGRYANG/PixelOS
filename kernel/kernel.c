@@ -23,6 +23,10 @@
 extern uint8_t __user_text_start;
 extern uint8_t __user_text_end;
 
+// .userdata 섹션 심볼
+extern uint8_t __user_data_start;
+extern uint8_t __user_data_end;
+
 // 유저 모드 진입 함수
 extern void jump_usermode(uint32_t user_eip, uint32_t user_esp);
 extern void usermode_entry(void);
@@ -295,6 +299,18 @@ void kernel_main(void)
     {
         // 실패한 경우
         window_put_string(g_testwin, "[FAIL] user text mapping failed\n", COLOR_LIGHT_RED);
+        compositor_compose();
+
+        for (;;)
+        {
+            __asm__ volatile ("hlt");
+        }
+    }
+
+    // userdata 섹션에 R/W, U/S 플래그 설정
+    if (paging_set_range_flags((uint32_t)&__user_data_start, (uint32_t)(&__user_data_end - &__user_data_start), P_US | P_RW) < 0)
+    {
+        window_put_string(g_testwin, "[FAIL] user data mapping failed\n", COLOR_LIGHT_RED);
         compositor_compose();
 
         for (;;)
