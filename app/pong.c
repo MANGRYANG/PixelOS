@@ -11,6 +11,7 @@
 #define CENTER_LINE_WIDTH 2
 #define CENTER_LINE_HEIGHT 6
 #define CENTER_LINE_GAP 4
+#define CENTER_LINE_MAX_RECTS 20
 
 #define BALL_SIZE 8
 
@@ -21,6 +22,10 @@
 #define PLAYER_2 2
 
 #define PONG_FRAME_TICKS 1u
+
+// 중앙 기준선을 그리기 위한 사각형들을 저장하는 전역 배열
+__attribute__((section(".userdata"), aligned(4)))
+static SyscallRect g_center_line_rects[CENTER_LINE_MAX_RECTS];
 
 // pong 게임 초기화를 위한 내부 함수
 __attribute__((section(".usertext")))
@@ -323,9 +328,29 @@ __attribute__((section(".usertext")))
 static void pong_render_center_line(PongState* game)
 {
     int center_x = (game->game_w - CENTER_LINE_WIDTH) / 2;
-    for (int i = 0; i < game->game_h; i += (CENTER_LINE_HEIGHT + CENTER_LINE_GAP))
+    uint32_t count = 0;
+
+    for (int i = 0; i < game->game_h && count < CENTER_LINE_MAX_RECTS; i += (CENTER_LINE_HEIGHT + CENTER_LINE_GAP))
     {
-        app_game_fill_rect(center_x, i, CENTER_LINE_WIDTH, CENTER_LINE_HEIGHT, COLOR_LIGHT_GRAY);
+        g_center_line_rects[count].x = (uint16_t)center_x;
+        g_center_line_rects[count].y = (uint16_t)i;
+        g_center_line_rects[count].width = (uint16_t)CENTER_LINE_WIDTH;
+        g_center_line_rects[count].height = (uint16_t)CENTER_LINE_HEIGHT;
+        ++count;
+    }
+
+    if (app_game_fill_rects_batch(g_center_line_rects, count, COLOR_LIGHT_GRAY) < 0)
+    {
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            app_game_fill_rect(
+                g_center_line_rects[i].x,
+                g_center_line_rects[i].y,
+                g_center_line_rects[i].width,
+                g_center_line_rects[i].height,
+                COLOR_LIGHT_GRAY
+            );
+        }
     }
 }
 

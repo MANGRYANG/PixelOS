@@ -15,6 +15,13 @@ SECTIONS {              # kernel.bin의 메모리 배치 규칙 정의
         __user_text_end = .;
     }
 
+    .userdata : ALIGN(4096)
+{
+    __user_data_start = .;
+    *(.userdata*)
+    __user_data_end = .;
+}
+
     .rodata : ALIGN(4096)
     {
         *(.rodata*)     # 모든 읽기 전용 데이터를 하나로 묶어 배치

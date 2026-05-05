@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "../window/window.h"
+#include "syscall.h"
 
 // 게임 윈도우 생성 함수
 void kernel_game_init(void);
@@ -9,6 +10,7 @@ void kernel_game_init(void);
 // 게임 렌더링 관련 헬퍼
 void kernel_game_clear(uint8_t color);
 void kernel_game_fill_rect(int x, int y, int w, int h, uint8_t color);
+void kernel_game_fill_rects_batch(const SyscallRect* rects, uint32_t count, uint8_t color);
 void kernel_game_draw_text(int x, int y, const char* text, uint8_t color);
 void kernel_game_present(void);
 

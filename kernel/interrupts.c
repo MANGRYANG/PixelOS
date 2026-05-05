@@ -183,17 +183,184 @@ void page_fault_handler(uint32_t fault_addr, uint32_t error_code)
 }
 
 // 커널 디버그 메시지 출력 함수 가져오기
-extern void kernel_debug_puts(const char* s);
+extern void kernel_debug_puts(const char* s, uint32_t line);
+
+// Metric count를 추적할 시스템 콜의 개수
+#define SYSCALL_METRIC_COUNT 12
+// Metric count를 출력할 주기
+#define SYSCALL_METRIC_INTERVAL_TICKS 100u
+
+// 각 시스템 콜에 대한 Metric count를 저장할 배열
+static uint32_t g_syscall_metric_counts[SYSCALL_METRIC_COUNT];
+// 마지막으로 Metric count를 출력한 시점의 타이머 값
+static uint32_t g_syscall_metric_last_tick = 0;
+
+// 문자열 합성을 위한 내부 함수
+static char* append_str(char* ptr, const char* str)
+{
+    while (*str)
+    {
+        *ptr++ = *str++;
+    }
+
+    return ptr;
+}
+
+// 숫자 합성을 위한 내부 함수
+static char* append_u32(char* ptr, uint32_t num)
+{
+    char temp[10];
+    int i = 0;
+
+    if (num == 0)
+    {
+        *ptr++ = '0';
+        return ptr;
+    }
+
+    while (num > 0)
+    {
+        temp[i++] = (char)('0' + (num % 10));
+        num /= 10;
+    }
+
+    while (i > 0)
+    {
+        *ptr++ = temp[--i];
+    }
+
+    return ptr;
+}
+
+// 시스템 콜 Metric count 수집을 위한 내부 함수
+static void syscall_metric_count(uint32_t syscall_no)
+{
+    if (syscall_no < SYSCALL_METRIC_COUNT)
+    {
+        ++g_syscall_metric_counts[syscall_no];
+    }
+}
+
+// 시스템 콜 Metric count 배열 초기화를 위한 내부 함수
+static void syscall_metric_reset(void)
+{
+    for (uint32_t i = 0; i < SYSCALL_METRIC_COUNT; ++i)
+    {
+        g_syscall_metric_counts[i] = 0;
+    }
+}
+
+// 시스템 콜 Metric count를 출력하는 함수
+static void syscall_metric_report(void)
+{
+    uint32_t now = g_timer_ticks;
+
+    // 최초 실행
+    if (g_syscall_metric_last_tick == 0)
+    {
+        g_syscall_metric_last_tick = now;
+        return;
+    }
+
+    // Interval 체크
+    if ((now - g_syscall_metric_last_tick) < SYSCALL_METRIC_INTERVAL_TICKS)
+    {
+        return;
+    }
+
+    // 버퍼 준비
+    char buf_0[64];
+    char* p_0 = buf_0;
+
+    // SYS_PRESENT 시스템 콜 호출 횟수는 P 뒤에 숫자로 표기
+    p_0 = append_str(p_0, "[M] P");
+    p_0 = append_u32(p_0, g_syscall_metric_counts[SYS_PRESENT]);
+
+    // SYS_GAME_FILL_RECT 시스템 콜 호출 횟수는 F 뒤에 숫자로 표기
+    p_0 = append_str(p_0, " F");
+    p_0 = append_u32(p_0, g_syscall_metric_counts[SYS_GAME_FILL_RECT]);
+
+    // SYS_KEY_DOWN 시스템 콜 호출 횟수는 K 뒤에 숫자로 표기
+    p_0 = append_str(p_0, " K");
+    p_0 = append_u32(p_0, g_syscall_metric_counts[SYS_KEY_DOWN]);
+
+    // 널 종료 문자(\0) 추가
+    *p_0 = 0;
+
+    // 버퍼 준비
+    char buf_1[64];
+    char* p_1 = buf_1;
+
+    // SYS_SLEEP 시스템 콜 호출 횟수는 S 뒤에 숫자로 표기
+    p_1 = append_str(p_1, "[M] S");
+    p_1 = append_u32(p_1, g_syscall_metric_counts[SYS_SLEEP]);
+
+    // SYS_GET_TICKS 시스템 콜 호출 횟수는 G 뒤에 숫자로 표기
+    p_1 = append_str(p_1, " G");
+    p_1 = append_u32(p_1, g_syscall_metric_counts[SYS_GET_TICKS]);
+
+    // SYS_GAME_DRAW_TEXT 시스템 콜 호출 횟수는 T 뒤에 숫자로 표기
+    p_1 = append_str(p_1, " T");
+    p_1 = append_u32(p_1, g_syscall_metric_counts[SYS_GAME_DRAW_TEXT]);
+
+    // 널 종료 문자(\0) 추가
+    *p_1 = 0;
+
+    // 버퍼 준비
+    char buf_2[64];
+    char* p_2 = buf_2;
+
+    // SYS_GAME_FILL_RECTS_BATCH 시스템 콜 호출 횟수는 B 뒤에 숫자로 표기
+    p_2 = append_str(p_2, "[M] B");
+    p_2 = append_u32(p_2, g_syscall_metric_counts[SYS_GAME_FILL_RECTS_BATCH]);
+
+    // 시스템 콜 Metric count 출력
+    kernel_debug_puts(buf_0, 0);
+    kernel_debug_puts(buf_1, 1);
+    kernel_debug_puts(buf_2, 2);
+
+    // 상태 초기화
+    syscall_metric_reset();
+    g_syscall_metric_last_tick = now;
+}
+
+extern uint8_t __user_data_start;
+extern uint8_t __user_data_end;
+
+// 포인터가 userdata 섹션 범위 안의 유효한 메모리 구간을 가리키는지 확인하는 함수
+static int syscall_ptr_in_userdata(uint32_t ptr, uint32_t bytes)
+{
+    uint32_t start = (uint32_t)&__user_data_start;
+    uint32_t end = (uint32_t)&__user_data_end;
+
+    // 포인터가 userdata 섹션 범위를 벗어나는 경우 실패 처리
+    if (ptr < start || ptr > end)
+    {
+        return 0;
+    }
+
+    // 요청한 바이트 수가 userdata 섹션을 넘어가면 실패 처리
+    if (bytes > end - ptr)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
 
 // asm 코드에서 호출되는 시스템 콜 핸들러 정의
 TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
+    syscall_metric_count(syscall_no);
+    syscall_metric_report();
+
     switch(syscall_no)
     {
         case SYS_DEBUG_PUTS:
         {
             const char* s = (const char*)arg0;
-            kernel_debug_puts(s);
+            kernel_debug_puts(s, 0);
 
             frame->eax = 0;
             return frame;
@@ -243,6 +410,29 @@ TrapFrame* syscall_handler(TrapFrame* frame, uint32_t syscall_no, uint32_t arg0,
             uint8_t color = (uint8_t)arg2;
 
             kernel_game_fill_rect(x, y, w, h, color);
+
+            frame->eax = 0;
+            return frame;
+        }
+
+        case SYS_GAME_FILL_RECTS_BATCH:
+        {
+            const SyscallRect* rects = (const SyscallRect*)arg0;
+            uint32_t count = arg1;
+            uint8_t color = (uint8_t)arg2;
+
+            if (count > 20u)
+            {
+                count = 20u;
+            }
+
+            if (!syscall_ptr_in_userdata(arg0, count * sizeof(SyscallRect)))
+            {
+                frame->eax = (uint32_t)-1;
+                return frame;
+            }
+
+            kernel_game_fill_rects_batch(rects, count, color);
 
             frame->eax = 0;
             return frame;

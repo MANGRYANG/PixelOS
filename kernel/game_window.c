@@ -81,6 +81,19 @@ void kernel_game_fill_rect(int x, int y, int w, int h, uint8_t color)
     }
 }
 
+void kernel_game_fill_rects_batch(const SyscallRect* rects, uint32_t count, uint8_t color)
+{
+    if (!rects || count <= 0)
+    {
+        return;
+    }
+
+    for (int i = 0; i < count; ++i)
+    {
+        kernel_game_fill_rect(rects[i].x, rects[i].y, rects[i].width, rects[i].height, color);
+    }
+}
+
 void kernel_game_draw_text(int x, int y, const char* text, uint8_t color)
 {
     if (!g_gamewin || !g_gamewin->in_use || !text)
