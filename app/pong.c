@@ -22,10 +22,31 @@
 #define PLAYER_2 2
 
 #define PONG_FRAME_TICKS 1u
+// 한 번에 보정할 최대 Delta Ticks
+#define PONG_MAX_DELTA_TICKS 3u
 
 // 중앙 기준선을 그리기 위한 사각형들을 저장하는 전역 배열
 __attribute__((section(".userdata"), aligned(4)))
 static SyscallRect g_center_line_rects[CENTER_LINE_MAX_RECTS];
+
+// Delta Ticks 클램핑을 위한 내부 헬퍼
+__attribute__((section(".usertext")))
+static uint32_t pong_clamp_delta_ticks(uint32_t delta_ticks)
+{
+    // 최소 1로 설정
+    if (delta_ticks == 0)
+    {
+        return 1u;
+    }
+
+    // 최대 제한
+    if (delta_ticks > PONG_MAX_DELTA_TICKS)
+    {
+        return PONG_MAX_DELTA_TICKS;
+    }
+
+    return delta_ticks;
+}
 
 // pong 게임 초기화를 위한 내부 함수
 __attribute__((section(".usertext")))
@@ -97,7 +118,7 @@ static void pong_handle_global_input(PongState* game)
 
 // pong 게임의 패들 조작을 위한 입력 관리를 위한 내부 함수
 __attribute__((section(".usertext")))
-static void pong_handle_paddle_input(PongState* game)
+static void pong_handle_paddle_input(PongState* game, uint32_t delta_time)
 {
     // 일시정지, 게임 종료 상태인 경우 패들 조작 불가 처리
     if (game->paused || game->game_over)
@@ -105,26 +126,28 @@ static void pong_handle_paddle_input(PongState* game)
         return;
     }
 
+    int paddle_step = game->paddle_speed * (int)delta_time;
+
     // Player 1: W/S 키로 왼쪽 패들 조작
     if (app_key_down(APP_KEY_W))
     {
-        game->left_paddle_y -= game->paddle_speed;
+        game->left_paddle_y -= paddle_step;
     }
 
     if (app_key_down(APP_KEY_S))
     {
-        game->left_paddle_y += game->paddle_speed;
+        game->left_paddle_y += paddle_step;
     }
 
     // Player 2: 방향키 위/아래로 오른쪽 패들 조작
     if (app_key_down(APP_KEY_UP))
     {
-        game->right_paddle_y -= game->paddle_speed;
+        game->right_paddle_y -= paddle_step;
     }
 
     if (app_key_down(APP_KEY_DOWN))
     {
-        game->right_paddle_y += game->paddle_speed;
+        game->right_paddle_y += paddle_step;
     }
 
     // 왼쪽 패들 경계값 처리
@@ -150,10 +173,10 @@ static void pong_handle_paddle_input(PongState* game)
 
 // pong 게임의 입력 관리를 위한 내부 함수
 __attribute__((section(".usertext")))
-static void pong_handle_input(PongState* game)
+static void pong_handle_input(PongState* game, uint32_t delta_ticks)
 {
     pong_handle_global_input(game);
-    pong_handle_paddle_input(game);
+    pong_handle_paddle_input(game, delta_ticks);
 }
 
 // 두 사각형의 충돌 여부를 확인하는 내부 함수
@@ -229,7 +252,7 @@ static void pong_score_point(PongState* game, int player)
 
 // pong 게임 상태 갱신을 위한 내부 함수
 __attribute__((section(".usertext")))
-static void pong_update(PongState* game)
+static void pong_update(PongState* game, uint32_t delta_ticks)
 {
     // 게임이 일시정지 상태이거나 종료 상태인 경우 업데이트하지 않음
     if (game->game_over || game->paused)
@@ -242,8 +265,8 @@ static void pong_update(PongState* game)
     const int right_paddle_x = game->game_w - (PADDLE_OFFSET_X + game->paddle_w);
 
     // 공의 현재 위치 갱신
-    game->ball_curr_x += game->ball_velocity_x;
-    game->ball_curr_y += game->ball_velocity_y;
+    game->ball_curr_x += (game->ball_velocity_x * (int)delta_ticks);
+    game->ball_curr_y += (game->ball_velocity_y * (int)delta_ticks);
 
     // 천장 충돌 감지
     if (game->ball_curr_y <= 0)
@@ -473,9 +496,11 @@ void pong_main(void)
     for (;;)
     {
         uint32_t now = app_get_ticks();
+        // 경과된 Tick 계산
+        uint32_t elapsed_ticks = (uint32_t)(now - last_frame_tick);
 
         // 아직 다음 frame을 처리할 tick이 되지 않았다면 CPU를 양보
-        if ((uint32_t)(now - last_frame_tick) < PONG_FRAME_TICKS)
+        if (elapsed_ticks < PONG_FRAME_TICKS)
         {
             app_sleep(1);
             continue;
@@ -485,8 +510,11 @@ void pong_main(void)
         // 현재 tick 기준으로 다음 frame을 진행
         last_frame_tick = now;
 
-        pong_handle_input(&game);
-        pong_update(&game);
+        // Delta Ticks 클램핑
+        uint32_t delta_ticks = pong_clamp_delta_ticks(elapsed_ticks);
+
+        pong_handle_input(&game, delta_ticks);
+        pong_update(&game, delta_ticks);
         pong_render(&game);
 
         app_sleep(1);
