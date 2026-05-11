@@ -21,7 +21,7 @@
 #define PLAYER_1 1
 #define PLAYER_2 2
 
-#define PONG_FRAME_TICKS 1u
+#define PONG_FRAME_TICKS 2u
 // 한 번에 보정할 최대 Delta Ticks
 #define PONG_MAX_DELTA_TICKS 3u
 
