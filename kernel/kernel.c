@@ -285,8 +285,8 @@ void kernel_main(void)
     wm_init();
 
     // 테스트용 window 생성
-    kernel_game_init();
     g_testwin = wm_create_window(50, 50, 200, 140, COLOR_WHITE, COLOR_BLUE, "TEST");
+    kernel_game_init();
 
     int mx = get_mouse_x();
     int my = get_mouse_y();
