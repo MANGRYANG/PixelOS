@@ -502,7 +502,7 @@ void pong_main(void)
         // 아직 다음 frame을 처리할 tick이 되지 않았다면 CPU를 양보
         if (elapsed_ticks < PONG_FRAME_TICKS)
         {
-            app_sleep(1);
+            // app_sleep(1);
             continue;
         }
 
@@ -517,6 +517,6 @@ void pong_main(void)
         pong_update(&game, delta_ticks);
         pong_render(&game);
 
-        app_sleep(1);
+        // app_sleep(1);
     }
 }
