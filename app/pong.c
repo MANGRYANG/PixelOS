@@ -104,16 +104,19 @@ static void pong_handle_global_input(PongState* game)
 
     game->restart_was_down = restart_down;
 
-    int space_down = app_key_down(APP_KEY_SPACE);
-
-    // SPACE 키를 누르는 순간 한 번만 일시정지 상태 토글
-    if (!game->game_over && space_down && !game->space_was_down)
+    if(!game->game_over)
     {
-        game->paused = !game->paused;
-    }
+        int space_down = app_key_down(APP_KEY_SPACE);
 
-    // space_was_down 갱신
-    game->space_was_down = space_down;
+        // SPACE 키를 누르는 순간 한 번만 일시정지 상태 토글
+        if (space_down && !game->space_was_down)
+        {
+            game->paused = !game->paused;
+        }
+
+        // space_was_down 갱신
+        game->space_was_down = space_down;
+    }
 }
 
 // pong 게임의 패들 조작을 위한 입력 관리를 위한 내부 함수
