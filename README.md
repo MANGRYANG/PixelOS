@@ -37,7 +37,7 @@ PixelOS를 통해 구현하고 경험한 핵심 기능은 다음과 같습니다
 
 ## 📄 문서
 
-[![PixelOS Docs](https://img.shields.io/badge/PixelOS-Documentation-orange?style=for-the-badge&logo=obsidian)](https://github.com/MANGRYANG/PixelOS-docs)
+[![PixelOS Docs](https://img.shields.io/badge/PixelOS-Documentation-purple?style=for-the-badge&logo=obsidian)](https://github.com/MANGRYANG/PixelOS-docs)
 
 ---
 
