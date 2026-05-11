@@ -35,6 +35,12 @@ PixelOS를 통해 구현하고 경험한 핵심 기능은 다음과 같습니다
 
 ---
 
+## 📄 문서
+
+[![PixelOS Docs](https://img.shields.io/badge/PixelOS-Documentation-orange?style=for-the-badge&logo=obsidian)](https://github.com/MANGRYANG/PixelOS-docs)
+
+---
+
 ## ⚖️ 라이선스
 
 본 프로젝트는 MIT 라이선스를 따릅니다. 다만 개인적인 용도로 개발되어 외부 기여를 받지 않고 있습니다.  
