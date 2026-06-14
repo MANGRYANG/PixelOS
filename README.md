@@ -1,6 +1,6 @@
 # PixelOS
 <p align="center">
-  <img width="711" height="408" alt="PixelOS" src="https://github.com/user-attachments/assets/b0fed755-0419-4757-8fe2-661d8c15d06e" />
+  <img width="638" height="461" alt="image" src="https://github.com/user-attachments/assets/0644e5df-71da-4f36-a314-8ce1857f8d3c" />
 </p>
 
 ---
